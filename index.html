@@ -1,0 +1,2503 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>바다거북스프 평결부</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=Noto+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+:root{
+  --ink-bg:#16222d;
+  --ink-bg-2:#1d2e3b;
+  --paper:#ece2c8;
+  --paper-2:#e0d4ae;
+  --gold:#b8923f;
+  --stamp-red:#a23a2c;
+  --teal:#2e6c5e;
+  --amber:#b87c2e;
+  --violet:#4a3a7a;
+  --text-ink:#241c12;
+  --text-onink:#e8dfc6;
+  --text-soft:#6b5e47;
+  --text-soft-onink:#93a4b0;
+  --radius:14px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:radial-gradient(circle at 12% 0%, rgba(184,146,63,0.08), transparent 45%), var(--ink-bg);
+  color:var(--text-onink);
+  font-family:'Noto Sans KR', sans-serif;
+  min-height:100vh;
+  -webkit-tap-highlight-color: transparent;
+}
+.mono{font-family:'IBM Plex Mono', monospace;}
+.serif{font-family:'Nanum Myeongjo', serif;}
+a{color:inherit;}
+button{font-family:inherit;cursor:pointer;}
+input,select,textarea{font-family:inherit;}
+
+/* ---- layout ---- */
+.wrap{max-width:560px;margin:0 auto;padding:0 16px 80px;}
+.hdr{max-width:560px;margin:0 auto;padding:22px 16px 16px;border-bottom:1px solid rgba(184,146,63,0.35);}
+.hdr-top{display:flex;align-items:center;gap:12px;}
+.brandmark svg{width:46px;height:46px;display:block;}
+.hdr-title h1{font-family:'Nanum Myeongjo', serif;font-size:21px;font-weight:800;margin:0;letter-spacing:0.5px;color:var(--text-onink);}
+.hdr-title .sub{font-size:11.5px;color:var(--text-soft-onink);margin-top:2px;letter-spacing:0.3px;}
+.user-badge{margin-top:14px;display:flex;align-items:center;justify-content:space-between;background:var(--ink-bg-2);border:1px solid rgba(184,146,63,0.3);border-radius:999px;padding:8px 8px 8px 14px;}
+.user-badge .who{font-size:13.5px;}
+.user-badge .role-tag{font-size:11px;padding:3px 9px;border-radius:999px;margin-left:8px;font-family:'IBM Plex Mono', monospace;letter-spacing:0.3px;}
+.role-tag.judge{background:rgba(46,108,94,0.25);color:#9fd8c6;border:1px solid rgba(46,108,94,0.5);}
+.role-tag.player{background:rgba(162,58,44,0.22);color:#e7b4a7;border:1px solid rgba(162,58,44,0.45);}
+.role-tag.questioner{background:rgba(74,58,122,0.3);color:#c4b8e8;border:1px solid rgba(74,58,122,0.5);}
+.user-badge button{background:transparent;border:none;color:var(--text-soft-onink);font-size:11.5px;text-decoration:underline;padding:6px 8px;}
+
+/* ---- nav tabs (기능 전환) ---- */
+.main-nav{display:flex;gap:6px;padding:14px 16px 0;max-width:560px;margin:0 auto;overflow-x:auto;}
+.main-nav::-webkit-scrollbar{height:0;}
+.nav-btn{flex:0 0 auto;padding:8px 14px;border-radius:999px;border:1.5px solid rgba(184,146,63,0.35);background:transparent;color:var(--text-soft-onink);font-size:12.5px;font-weight:600;white-space:nowrap;}
+.nav-btn.active{background:var(--gold);color:var(--ink-bg);border-color:var(--gold);}
+.nav-badge{display:inline-block;background:var(--stamp-red);color:#fff;border-radius:999px;font-size:10px;padding:1px 5px;margin-left:4px;font-family:'IBM Plex Mono', monospace;}
+
+section{margin-top:22px;}
+.section-label{display:flex;align-items:baseline;gap:8px;margin-bottom:10px;}
+.section-label .no{font-family:'IBM Plex Mono', monospace;color:var(--gold);font-size:12px;}
+.section-label .name{font-family:'Nanum Myeongjo', serif;font-size:15.5px;font-weight:700;color:var(--text-onink);}
+
+/* ---- cards ---- */
+.card{background:var(--paper);color:var(--text-ink);border-radius:var(--radius);padding:18px;box-shadow:0 10px 24px -12px rgba(0,0,0,0.55);position:relative;}
+.card+.card{margin-top:12px;}
+.card.empty{text-align:center;font-size:13.5px;border:1px dashed rgba(107,94,71,0.4);background:transparent;color:var(--text-soft-onink);}
+.card.dark{background:var(--ink-bg-2);color:var(--text-onink);border:1px solid rgba(184,146,63,0.25);}
+
+/* ---- status pill ---- */
+.poll-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+.poll-head .tag{font-family:'IBM Plex Mono', monospace;font-size:10.5px;color:var(--text-soft);letter-spacing:0.4px;}
+.poll-head h3{font-family:'Nanum Myeongjo', serif;font-size:17px;margin:4px 0 2px;line-height:1.3;}
+.poll-meta{font-size:11.5px;color:var(--text-soft);margin-bottom:14px;}
+.status-pill{font-size:10.5px;padding:3px 8px;border-radius:999px;white-space:nowrap;font-family:'IBM Plex Mono', monospace;}
+.status-pill.open{background:rgba(46,108,94,0.18);color:var(--teal);border:1px solid rgba(46,108,94,0.4);}
+.status-pill.closed{background:rgba(162,58,44,0.14);color:var(--stamp-red);border:1px solid rgba(162,58,44,0.35);}
+.status-pill.pending{background:rgba(184,146,63,0.18);color:var(--gold);border:1px solid rgba(184,146,63,0.4);}
+.status-pill.approved{background:rgba(46,108,94,0.18);color:var(--teal);border:1px solid rgba(46,108,94,0.4);}
+.status-pill.rejected{background:rgba(162,58,44,0.14);color:var(--stamp-red);border:1px solid rgba(162,58,44,0.35);}
+.status-pill.objected{background:rgba(74,58,122,0.25);color:#c4b8e8;border:1px solid rgba(74,58,122,0.45);}
+
+.hairline{border-top:1px solid rgba(107,94,71,0.25);margin:14px 0;}
+
+/* ---- score input ---- */
+.score-row{display:grid;grid-template-columns:64px 1fr 32px;align-items:center;gap:10px;margin-bottom:10px;}
+.score-row label{font-size:13px;font-weight:600;}
+.score-row input[type=range]{width:100%;accent-color:var(--stamp-red);}
+.score-row output{font-family:'IBM Plex Mono', monospace;font-size:13px;text-align:right;}
+.btn{border:none;border-radius:10px;padding:11px 16px;font-size:14px;font-weight:700;width:100%;margin-top:6px;}
+.btn-primary{background:var(--text-ink);color:var(--paper);}
+.btn-secondary{background:transparent;color:var(--text-ink);border:1.5px solid rgba(36,28,18,0.4);}
+.btn-ghost{background:transparent;color:var(--text-soft-onink);border:1px dashed rgba(147,164,176,0.5);}
+.btn-danger{background:transparent;color:var(--stamp-red);border:1.5px solid rgba(162,58,44,0.45);}
+.btn-approve{background:var(--teal);color:#fff;border:none;}
+.btn-reject{background:var(--stamp-red);color:#fff;border:none;}
+.btn-sm{padding:7px 12px;font-size:12.5px;border-radius:8px;}
+.btn-row{display:flex;gap:8px;}
+.btn-row .btn{margin-top:0;}
+
+.consent-buttons{display:flex;gap:10px;}
+.btn-yes,.btn-no{flex:1;padding:14px 8px;border-radius:10px;font-size:14.5px;font-weight:700;border:1.5px solid transparent;background:rgba(0,0,0,0.04);color:var(--text-ink);}
+.btn-yes.active{background:var(--teal);color:#fff;border-color:var(--teal);}
+.btn-no.active{background:var(--stamp-red);color:#fff;border-color:var(--stamp-red);}
+
+.tally-line{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;color:var(--text-soft);}
+.bar-track{height:8px;border-radius:99px;background:rgba(107,94,71,0.18);overflow:hidden;margin-bottom:14px;}
+.bar-fill{height:100%;border-radius:99px;}
+.bar-fill.teal{background:var(--teal);}
+.bar-fill.red{background:var(--stamp-red);}
+
+.evaltable{width:100%;font-size:12px;border-collapse:collapse;margin-top:8px;}
+.evaltable th,.evaltable td{padding:4px 5px;text-align:center;border-bottom:1px solid rgba(107,94,71,0.18);}
+.evaltable th{color:var(--text-soft);font-weight:600;font-size:10.5px;}
+.evaltable td.name{text-align:left;font-weight:600;}
+.pass-yes{color:var(--teal);font-weight:700;}
+.pass-no{color:var(--stamp-red);font-weight:700;}
+
+details.raw{margin-top:10px;font-size:12.5px;}
+details.raw summary{cursor:pointer;color:var(--text-soft);font-size:12px;}
+
+/* ---- seal ---- */
+.seal-wrap{display:flex;flex-direction:column;align-items:center;margin:6px 0 4px;}
+.seal{width:148px;height:148px;transform:rotate(-4deg);animation:stampDown .55s ease-out;}
+@keyframes stampDown{0%{transform:scale(1.55) rotate(-12deg);opacity:0;}60%{transform:scale(0.94) rotate(2deg);opacity:1;}100%{transform:scale(1) rotate(-4deg);opacity:1;}}
+@media (prefers-reduced-motion: reduce){.seal{animation:none;}}
+.seal-ring-outer{fill:none;stroke-width:3;}
+.seal-ring-inner{fill:none;stroke-width:1.4;}
+.seal.tone-pass .seal-ring-outer,.seal.tone-pass .seal-ring-inner,.seal.tone-pass .seal-main-text,.seal.tone-pass .seal-arctext,.seal.tone-pass .seal-turtle{stroke:var(--teal);fill:var(--teal);}
+.seal.tone-fail .seal-ring-outer,.seal.tone-fail .seal-ring-inner,.seal.tone-fail .seal-main-text,.seal.tone-fail .seal-arctext,.seal.tone-fail .seal-turtle{stroke:var(--stamp-red);fill:var(--stamp-red);}
+.seal.tone-neutral .seal-ring-outer,.seal.tone-neutral .seal-ring-inner,.seal.tone-neutral .seal-main-text,.seal.tone-neutral .seal-arctext,.seal.tone-neutral .seal-turtle{stroke:var(--gold);fill:var(--gold);}
+.seal-turtle ellipse,.seal-turtle path,.seal-turtle circle{fill:inherit;}
+.seal-arctext{font-family:'IBM Plex Mono', monospace;font-size:9px;letter-spacing:1px;}
+.seal-main-text{font-family:'Nanum Myeongjo', serif;font-size:18px;font-weight:800;text-anchor:middle;}
+.seal-sub-text{font-family:'IBM Plex Mono', monospace;font-size:8.5px;text-anchor:middle;}
+
+/* ---- composer ---- */
+.tabs{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;}
+.tabs::-webkit-scrollbar{height:0;}
+.tab-btn{flex:0 0 auto;padding:9px 12px;border-radius:9px;border:1.5px solid rgba(36,28,18,0.25);background:transparent;color:var(--text-ink);font-size:13px;font-weight:700;}
+.tab-btn.active{background:var(--text-ink);color:var(--paper);border-color:var(--text-ink);}
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:12.5px;font-weight:700;margin-bottom:5px;color:var(--text-ink);}
+.field .hint{font-size:11px;color:var(--text-soft);margin-top:4px;}
+.field input[type=text],.field input[type=number],.field select,.field textarea{width:100%;padding:10px 11px;border-radius:9px;border:1.5px solid rgba(36,28,18,0.25);background:var(--paper-2);color:var(--text-ink);font-size:13.5px;}
+.field textarea{resize:vertical;min-height:80px;line-height:1.5;}
+.checkrow{display:flex;align-items:center;gap:8px;font-size:12.5px;margin-top:6px;}
+
+/* ---- history ---- */
+.hist-item{background:var(--ink-bg-2);border:1px solid rgba(184,146,63,0.25);border-radius:11px;padding:12px 14px;margin-bottom:9px;}
+.hist-top{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.hist-top .title{font-size:13.5px;font-weight:600;color:var(--text-onink);}
+.hist-stamp{font-family:'IBM Plex Mono', monospace;font-size:11px;padding:3px 9px;border-radius:999px;font-weight:700;}
+.hist-stamp.pass{background:rgba(46,108,94,0.22);color:#9fd8c6;}
+.hist-stamp.fail{background:rgba(162,58,44,0.2);color:#e7b4a7;}
+.hist-stamp.neutral{background:rgba(184,146,63,0.2);color:#e8c87a;}
+.hist-sub{font-size:11px;color:var(--text-soft-onink);margin-top:5px;font-family:'IBM Plex Mono', monospace;}
+
+/* ---- roster ---- */
+.chip-group{margin-bottom:10px;}
+.chip-group .cap{font-size:11px;color:var(--text-soft-onink);margin-bottom:6px;font-family:'IBM Plex Mono', monospace;}
+.chips{display:flex;flex-wrap:wrap;gap:6px;}
+.chip{font-size:12px;padding:5px 11px;border-radius:999px;background:var(--ink-bg-2);border:1px solid rgba(184,146,63,0.3);color:var(--text-onink);}
+.chip.chief{border-color:var(--gold);color:var(--gold);}
+
+/* ---- approval items ---- */
+.approval-item{background:var(--ink-bg-2);border:1px solid rgba(184,146,63,0.25);border-radius:12px;padding:14px;margin-bottom:10px;}
+.approval-item .a-type{font-family:'IBM Plex Mono', monospace;font-size:10.5px;color:var(--text-soft-onink);margin-bottom:4px;}
+.approval-item .a-title{font-size:14px;font-weight:700;color:var(--text-onink);margin-bottom:6px;line-height:1.4;}
+.approval-item .a-body{font-size:12.5px;color:var(--text-soft-onink);margin-bottom:10px;line-height:1.5;white-space:pre-wrap;background:rgba(0,0,0,0.2);border-radius:8px;padding:10px;}
+.approval-item .a-meta{font-size:11px;color:var(--text-soft-onink);margin-bottom:10px;}
+.a-reason{font-size:12.5px;color:var(--text-soft-onink);background:rgba(162,58,44,0.15);border:1px solid rgba(162,58,44,0.3);border-radius:8px;padding:10px;margin-bottom:10px;line-height:1.5;}
+.a-reason.violet{background:rgba(74,58,122,0.2);border-color:rgba(74,58,122,0.35);color:#c4b8e8;}
+.a-reason.green{background:rgba(46,108,94,0.2);border-color:rgba(46,108,94,0.35);color:#7dd9c8;}
+.a-objection{font-size:12.5px;background:rgba(74,58,122,0.15);border:1px solid rgba(74,58,122,0.35);border-radius:8px;padding:10px;margin-bottom:10px;line-height:1.5;color:#c4b8e8;}
+.notify-banner{background:rgba(184,146,63,0.15);border:1px solid rgba(184,146,63,0.35);border-radius:10px;padding:12px 14px;margin-bottom:10px;font-size:12.5px;color:var(--gold);line-height:1.5;}
+
+/* ---- question items ---- */
+.question-item{background:var(--ink-bg-2);border:1px solid rgba(184,146,63,0.2);border-radius:11px;padding:12px 14px;margin-bottom:8px;}
+.q-num{font-family:'IBM Plex Mono', monospace;font-size:10.5px;color:var(--gold);margin-bottom:3px;}
+.q-text{font-size:13.5px;color:var(--text-onink);font-weight:600;margin-bottom:5px;}
+.q-answer{font-size:12.5px;color:var(--text-soft-onink);background:rgba(0,0,0,0.25);border-radius:7px;padding:8px 10px;margin-top:6px;}
+.q-answer .answer-label{font-family:'IBM Plex Mono', monospace;font-size:10px;color:var(--teal);margin-bottom:3px;}
+.q-rejected-banner{font-size:12.5px;background:rgba(162,58,44,0.2);border:1.5px solid rgba(162,58,44,0.4);border-radius:8px;padding:10px 12px;margin-top:8px;color:#ff9999;line-height:1.5;}
+
+/* ---- chief badge ---- */
+.chief-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(184,146,63,0.15);border:1px solid rgba(184,146,63,0.4);border-radius:999px;padding:4px 10px;font-size:11px;color:var(--gold);font-family:'IBM Plex Mono', monospace;}
+
+/* ---- join screen ---- */
+.join-shell{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+.join-card{max-width:380px;width:100%;background:var(--paper);color:var(--text-ink);border-radius:18px;padding:30px 26px 26px;box-shadow:0 20px 50px -20px rgba(0,0,0,0.6);text-align:center;}
+.join-card .brandmark{margin:0 auto 14px;width:64px;}
+.join-card .brandmark svg{width:64px;height:64px;}
+.join-card h1{font-family:'Nanum Myeongjo', serif;font-size:21px;margin:0 0 6px;}
+.join-card .tagline{font-size:12.5px;color:var(--text-soft);margin:0 0 22px;line-height:1.5;}
+.join-card form{text-align:left;}
+.join-card label{display:block;font-size:12.5px;font-weight:700;margin-bottom:6px;}
+.join-card input[type=text]{width:100%;padding:11px 12px;border-radius:10px;border:1.5px solid rgba(36,28,18,0.3);background:var(--paper-2);font-size:14px;margin-bottom:16px;}
+fieldset.role-pick{border:none;padding:0;margin:0 0 18px;}
+fieldset.role-pick legend{font-size:12.5px;font-weight:700;margin-bottom:8px;padding:0;}
+.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.role-opt{display:flex;align-items:center;gap:6px;border:1.5px solid rgba(36,28,18,0.25);border-radius:9px;padding:9px 10px;font-size:13px;cursor:pointer;}
+.role-opt input{accent-color:var(--text-ink);}
+.share-hint{margin-top:18px;font-size:11px;color:var(--text-soft);border-top:1px dashed rgba(107,94,71,0.35);padding-top:14px;line-height:1.5;}
+
+footer.legal-footnote{max-width:560px;margin:36px auto 0;padding:0 16px 28px;font-size:10.5px;color:var(--text-soft-onink);line-height:1.6;text-align:center;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+
+import {
+  getDatabase,
+  ref,
+  set,
+  get,
+  remove,
+  onValue
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+import {
+  getAuth,
+  signInAnonymously
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyCbsZMdmP0lD8PyvRRy-CZMhYeFMNNYIjQ",
+  authDomain: "seaturtle-7512b.firebaseapp.com",
+  projectId: "seaturtle-7512b",
+  storageBucket: "seaturtle-7512b.firebasestorage.app",
+  messagingSenderId: "51660619646",
+  appId: "1:51660619646:web:47c3af6bfa1bcd66d5fd2f",
+  measurementId: "G-LERN2VE51Q"
+};
+
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+
+const db = getDatabase(app);
+
+const auth = getAuth(app);
+
+window.auth = auth;
+
+try {
+  const cred = await signInAnonymously(auth);
+
+  console.log("Anonymous auth success");
+  console.log("UID =", cred.user.uid);
+
+} catch (e) {
+  console.error(e);
+}
+// --------- error overlay (show runtime errors in-page) ---------
+function showErrorOverlay(msg,src,ln){
+  try{
+    var id='__err_overlay__';
+    var ex=document.getElementById(id);if(!ex){ex=document.createElement('div');ex.id=id;ex.style.position='fixed';ex.style.zIndex=99999;ex.style.left='10px';ex.style.right='10px';ex.style.top='10px';ex.style.padding='12px';ex.style.background='rgba(200,40,40,0.95)';ex.style.color='#fff';ex.style.fontFamily='monospace';ex.style.fontSize='13px';ex.style.borderRadius='8px';ex.style.maxHeight='40vh';ex.style.overflow='auto';document.body.appendChild(ex);}ex.innerText='JS ERROR: '+msg+'\n@'+(src||'')+':'+(ln||'');
+  }catch(e){console.error('overlay fail',e);}  
+}
+
+window.addEventListener('error',function(ev){try{showErrorOverlay(ev.message,ev.filename,ev.lineno);}catch(e){};});
+window.addEventListener('unhandledrejection',function(ev){try{var msg=(ev.reason&&ev.reason.message)||String(ev.reason);showErrorOverlay('Unhandled Rejection: '+msg);}catch(e){};});
+// ---------------------------------------------------------------
+
+/* ===== audit log ===== */
+async function saveAudit(action,meta){
+  try{
+    var id=genId();
+    var entry=Object.assign({id:id,action:action,timestamp:Date.now(),actor:currentUser?{id:currentUser.id,name:currentUser.name}:null},meta||{});
+    await storageSet('audit:'+id,JSON.stringify(entry));
+    return entry;
+  }catch(e){console.error('audit save fail',e);}
+}
+
+/* ===== chairs (전담 평가원) ===== */
+async function fetchChairs(){var v=await storageGet('chairs');return safeParse(v,{});} 
+async function saveChairs(obj){if(!obj) return await storageSet('chairs',null);return await storageSet('chairs',JSON.stringify(obj));}
+
+
+
+/* ===== storage helpers ===== */
+async function storageGet(key){try{const r=await window.storage.get(key,true);return r?r.value:null;}catch(e){return null;}}
+async function storageSet(key,value){try{return await window.storage.set(key,value,true);}catch(e){console.error('set fail',key,e);return null;}}
+async function storageDelete(key){try{await window.storage.delete(key,true);}catch(e){}}
+async function storageList(prefix){try{const r=await window.storage.list(prefix,true);return(r&&r.keys)?r.keys:[];}catch(e){return[];}}
+// storage polyfill using localStorage when `window.storage` is not provided
+if(typeof window.storage==='undefined'){
+  window.storage = {
+    get: async function(key){
+      try{
+        const snapshot = await get(ref(db, key));
+        if(snapshot && snapshot.exists()) return { value: snapshot.val() };
+        return null;
+      }catch(e){ console.error(e); return null; }
+    },
+    set: async function(key, value){
+      try{
+        await set(ref(db, key), typeof value === 'string' ? value : JSON.stringify(value));
+        return { ok: true };
+      }catch(e){ console.error(e); return { ok: false }; }
+    },
+    delete: async function(key){
+      try{ await remove(ref(db, key)); return { ok: true }; }catch(e){ console.error(e); return { ok: false }; }
+    },
+    list: async function(prefix){
+      try{
+        const snapshot = await get(ref(db));
+        if(!snapshot || !snapshot.exists()) return { keys: [] };
+        const data = snapshot.val();
+        const keys = Object.keys(data||{});
+        return { keys: keys.filter(function(k){ return !prefix || k.indexOf(prefix) === 0; }) };
+      }catch(e){ console.error(e); return { keys: [] }; }
+    }
+  };
+}
+
+// local draft helpers (client-only, do NOT write to Firebase)
+function saveLocalDraft(key,obj){try{if(!window.localStorage) return;window.localStorage.setItem('local:draft:'+key,JSON.stringify(obj));}catch(e){}
+}
+function loadLocalDraft(key){try{if(!window.localStorage) return null;var s=window.localStorage.getItem('local:draft:'+key);return s?JSON.parse(s):null;}catch(e){return null;}
+}
+function clearLocalDraft(key){try{if(!window.localStorage) return;window.localStorage.removeItem('local:draft:'+key);}catch(e){}
+}
+function safeParse(str,fallback){if(str===null||str===undefined)return fallback;try{return JSON.parse(str);}catch(e){return fallback;}}
+function genId(){return(window.crypto&&window.crypto.randomUUID)?window.crypto.randomUUID():'id-'+Math.random().toString(36).slice(2)+Date.now();}
+function escapeHtml(s){
+  var str = String(s===undefined||s===null?'':s);
+  return str.replace(/[&<>"']/g, function(c){
+    var m = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+    return m[c];
+  });
+}
+function timeAgo(ts){if(!ts)return '';var d=Date.now()-ts;if(d<60000)return '방금';if(d<3600000)return Math.floor(d/60000)+'분 전';if(d<86400000)return Math.floor(d/3600000)+'시간 전';return Math.floor(d/86400000)+'일 전';}
+
+/* ===== constants ===== */
+var CATS=[{key:'ctx',label:'맥락성'},{key:'ctxt',label:'문맥성'},{key:'rat',label:'합리성'},{key:'sim',label:'유사성'},{key:'det',label:'상세성'}];
+var PRESET_LABEL={objection:'이의제기 인용 여부',subrule:'세부규칙 동의',submission:'정답 제출 동의',chiefvote:'평가장 선임 동의',qagree:'질문 합의',free:'자유 투표'};
+// approval types
+var ATYPE_LABEL={
+  answer:'답변 승인',
+  correct:'정답 사전 승인',
+  question:'질문 제시',
+  answerSubmit:'정답 제출',     // Phase 1: 참가자 정답 제출 합의
+  answerEval:'정답 평가'        // Phase 2: 평가자 정답 평가
+};
+
+/* ===== state ===== */
+var currentUser=null;
+var appState={roster:[],polls:[],approvals:[],questions:[],activePoll:null,votes:{},lastSig:null,chiefId:null,chairs:{},chairAutoSelectDisagreers:null,_savedInputs:{},_focusedElementId:null,_suspendRender:false,_pendingRenderFn:null};
+
+/* ===== 입력 중 렌더링 보류 (모바일 키보드 깜빡임 방지) =====
+   input/textarea/select에 포커스가 있는 동안에는 실시간 갱신이 와도
+   화면을 다시 그리지 않고 보류해둔다. 포커스가 빠지는 순간 보류된
+   렌더링을 한 번에 적용한다. 이렇게 하면 실시간성은 유지되면서
+   타이핑 중 DOM이 재생성되어 모바일 키보드가 닫혔다 열리는 현상을 막는다. */
+function isEditableEl(el){
+  return !!el && (el.tagName==='INPUT'||el.tagName==='TEXTAREA'||el.tagName==='SELECT');
+}
+document.addEventListener('focusin',function(e){
+  if(isEditableEl(e.target)) appState._suspendRender=true;
+});
+document.addEventListener('focusout',function(e){
+  if(!isEditableEl(e.target)) return;
+  // 포커스가 다른 입력 요소로 곧바로 이동하는 경우(탭 전환 등) 깜빡임 없이 넘어가도록 약간 지연 후 확인
+  setTimeout(function(){
+    if(isEditableEl(document.activeElement)) return; // 여전히 다른 입력칸에 포커스 중
+    appState._suspendRender=false;
+    if(appState._pendingRenderFn){
+      var fn=appState._pendingRenderFn;
+      appState._pendingRenderFn=null;
+      fn();
+    }
+  },150);
+});
+var heartbeatTimer=null;
+var countdownTimer=null;
+var composerOpen=false;
+var composerTab='score';
+var activeTab='vote'; // vote | approve | question | roster
+
+/* ===== data layer: polls ===== */
+async function fetchRoster(){var keys=await storageList('participant:');var rows=await Promise.all(keys.map(async function(k){var v=await storageGet(k);var d=safeParse(v,null);if(!d)return null;return Object.assign({id:k.slice('participant:'.length)},d);}));return rows.filter(Boolean).sort(function(a,b){return a.joinedAt-b.joinedAt;});}
+async function fetchPollIndex(){var v=await storageGet('poll-index');return safeParse(v,[])||[];}
+async function fetchPolls(){var idx=await fetchPollIndex();var rows=await Promise.all(idx.map(async function(id){var v=await storageGet('poll:'+id);return safeParse(v,null);}));var now = Date.now();
+
+return rows
+  .filter(Boolean)
+  .sort(function(a,b){
+    // sort by createdAt if present, fall back to id order
+    var ta=a.createdAt||0;var tb=b.createdAt||0;return ta-tb;
+  });}
+async function savePoll(poll){await storageSet('poll:'+poll.id,JSON.stringify(poll));}
+async function fetchVotes(pollId){var prefix='vote:'+pollId+':';var keys=await storageList(prefix);var entries=await Promise.all(keys.map(async function(k){var v=await storageGet(k);var val=safeParse(v,null);if(val===null)return null;return[k.slice(prefix.length),val];}));var out={};entries.filter(Boolean).forEach(function(pair){out[pair[0]]=pair[1];});return out;}
+async function castVote(pollId,value){await storageSet('vote:'+pollId+':'+currentUser.id,JSON.stringify(value));}
+async function castVoteWithLog(pollId,value){
+  await castVote(pollId,value);
+  try{await saveAudit('vote_cast',{pollId:pollId,actor:currentUser?currentUser.id:null,value:value});}catch(e){console.error('audit vote failed',e);}  
+}
+async function createPoll(poll){var idx=await fetchPollIndex();poll.id=genId();poll.no=idx.length+1;poll.status='open';poll.createdAt=Date.now();await savePoll(poll);idx.push(poll.id);await storageSet('poll-index',JSON.stringify(idx));}
+
+async function createPollWithLog(poll){
+  await createPoll(poll);
+  await saveAudit('poll_created',{pollId:poll.id,title:poll.title,preset:poll.preset||null});
+}
+async function closePollWithResult(poll,result){poll.status='closed';poll.result=result;poll.closedAt=Date.now();await savePoll(poll);}
+
+/* ===== data layer: approvals ===== */
+async function fetchApprovals(){var keys=await storageList('approval:');var rows=await Promise.all(keys.map(async function(k){var v=await storageGet(k);var d=safeParse(v,null);if(!d)return null;return Object.assign({id:k.slice('approval:'.length)},d);}));return rows.filter(Boolean).sort(function(a,b){return b.createdAt-a.createdAt;});}
+async function saveApproval(ap){
+  await storageSet('approval:'+ap.id,JSON.stringify(ap));
+  try{await saveAudit('approval_saved',{approvalId:ap.id,status:ap.status,actor:currentUser?currentUser.id:null});}catch(e){}
+}
+async function createApproval(data){var ap=Object.assign({id:genId(),createdAt:Date.now(),status:'pending'},data);await saveApproval(ap);return ap;}
+
+async function createApprovalWithLog(data){
+  var ap=await createApproval(data);
+  await saveAudit('approval_created',{approvalId:ap.id,type:ap.type,title:ap.title,authorId:ap.authorId});
+  return ap;
+}
+
+/* ===== data layer: questions ===== */
+async function fetchQuestions(){var v=await storageGet('questions');return safeParse(v,[])||[];}
+async function saveQuestions(qs){await storageSet('questions',JSON.stringify(qs));}
+
+/* ===== data layer: chief ===== */
+async function fetchChief(){var v=await storageGet('chief');return safeParse(v,null);}
+async function saveChief(data){await storageSet('chief',JSON.stringify(data));}
+
+async function fetchNominationPending(){var v=await storageGet('nomination_pending');return safeParse(v,null);} 
+async function clearNominationPending(){try{await storageDelete('nomination_pending');}catch(e){} }
+async function saveDesignatedQuestioner(obj){return await storageSet('designatedQuestioner',JSON.stringify(obj));}
+
+/* ===== game record utilities ===== */
+async function listAllKeys(){var all=await storageList('');return all||[];}
+async function archiveAndClearGameRecords(){
+  try{
+    var stamp=Date.now();
+    var keys=await listAllKeys();
+    var gameKeys=keys.filter(function(k){return k.indexOf('poll')===0||k.indexOf('approval:')===0||k.indexOf('questions')===0||k.indexOf('vote:')===0||k.indexOf('poll-index')===0||k.indexOf('chief')===0||k.indexOf('chairs')===0||k.indexOf('designatedQuestioner')===0||k.indexOf('nomination_pending')===0;});
+    var snapshot={stamp:stamp,items:{}};
+    for(var i=0;i<gameKeys.length;i++){var k=gameKeys[i];var v=await storageGet(k);snapshot.items[k]=safeParse(v,null);}    
+    // save archive
+    await storageSet('game_archive:'+stamp,JSON.stringify(snapshot));
+    // delete keys
+    for(var j=0;j<gameKeys.length;j++){var kk=gameKeys[j];try{await storageDelete(kk);}catch(e){console.error('del fail',kk,e);} }
+    await saveAudit('game_records_cleared',{archiveKey:'game_archive:'+stamp,stamp:stamp,by:currentUser?currentUser.id:null});
+    return {ok:true,archive:'game_archive:'+stamp};
+  }catch(e){console.error('archive clear failed',e);return {ok:false,error:String(e)};}
+}
+
+async function clearAllParticipants(){
+  try{
+    var keys=await storageList('participant:');
+    for(var i=0;i<keys.length;i++){var k=keys[i];try{await storageDelete(k);var id=k.slice('participant:'.length);await remove(ref(db,'participants/'+id));}catch(e){console.error('clear part fail',k,e);} }
+    await saveAudit('participants_cleared',{by:currentUser?currentUser.id:null});
+    return {ok:true};
+  }catch(e){return {ok:false}};
+}
+
+async function listArchives(){var keys=await storageList('game_archive:');return keys||[];}
+async function fetchArchive(key){var v=await storageGet(key);return safeParse(v,null);} 
+
+/* ===== scoring logic ===== */
+function computeScoreResult(votes,denom){var ids=Object.keys(votes);var breakdown=ids.map(function(id){var v=votes[id];var vals=[v.ctx,v.ctxt,v.rat,v.sim,v.det];var allAbove6=vals.every(function(x){return x>6;});var avg=vals.reduce(function(a,b){return a+b;},0)/5;var avgAbove8=avg>8;var simOk=v.sim>=7;var pass=allAbove6&&avgAbove8&&simOk;return{id:id,vals:vals,avg:avg,pass:pass};});var passCount=breakdown.filter(function(b){return b.pass;}).length;var total=denom&&denom>0?denom:ids.length;var rate=total?(passCount/total*100):0;var finalPass=rate>=60;var catAvg=CATS.map(function(c,i){if(breakdown.length===0)return 0;var sum=breakdown.reduce(function(s,b){return s+b.vals[i];},0);return sum/breakdown.length;});return{breakdown:breakdown,passCount:passCount,total:total,submitted:ids.length,rate:rate,finalPass:finalPass,catAvg:catAvg};}
+function computeConsentResult(votes,denom,preset,override){
+  var ids=Object.keys(votes);
+  var yes=ids.filter(function(id){return votes[id]==='찬성';}).length;
+  var no=ids.length-yes;
+  var N=(denom&&denom>0)?denom:Math.max(ids.length,1);
+  var required,label,pass;
+  // forced override: 통과 조건이 '과반수 반대 없음'인 경우
+  if(override&&override.forced){
+    // 과반수 초과의 반대가 있으면 부결
+    pass = (no <= Math.floor(N/2));
+    label = '강제 합의 (과반수 반대 없음 기준)';
+    required = '반대가 과반수 초과 여부 확인';
+    return{yes:yes,no:no,submitted:ids.length,N:N,required:required,label:label,pass:pass};
+  }
+  if(preset==='objection'){
+    if(N<=1){required=1;label='해당 평가자 1인의 단독 결정';pass=yes>=1;}else{required=Math.floor(N/2)+1;label='재적 과반수 ('+required+'/'+N+')';pass=yes>=required;}
+  } else if(preset==='subrule'||preset==='chiefvote'){
+    if(override==='twothirds'){required=Math.ceil(N*2/3);label='재적 3분의 2 이상 ('+required+'/'+N+')';pass=yes>=required;}else{required=N;label='재적 전원 찬성 ('+required+'/'+N+')';pass=yes>=required&&N>0;}
+  } else if(preset==='submission'||preset==='qagree'){
+    if(N<=1){required=1;label='단독 찬성으로 충족';pass=yes>=1;}else{required=Math.max(1,Math.ceil(N*4/5));label='5분의 4 이상 ('+required+'/'+N+')';pass=yes>=required;}
+  } else {
+    var pct=(override&&override.percent)?Number(override.percent):50;required=Math.max(1,Math.ceil(N*pct/100));label='찬성 '+pct+'% 이상 ('+required+'/'+N+')';pass=yes>=required;
+  }
+  return{yes:yes,no:no,submitted:ids.length,N:N,required:required,label:label,pass:pass};
+}
+
+/* ===== svg helpers ===== */
+var sealCounter=0;
+function turtleGlyph(){return'<g class="seal-turtle"><ellipse cx="0" cy="0" rx="25" ry="17"/><path d="M -19 0 L -9 -13 L 9 -13 L 19 0 L 9 13 L -9 13 Z" fill="var(--paper)" stroke="none"/><circle cx="-23" cy="-9" r="5.5"/><circle cx="21" cy="2" r="5"/><circle cx="-15" cy="13" r="5"/><circle cx="13" cy="14" r="5"/></g>';}
+function renderSeal(mainText,subText,tone){sealCounter++;var arcId='sealArc'+sealCounter;return'<svg viewBox="0 0 200 200" class="seal tone-'+tone+'" aria-hidden="true"><defs><path id="'+arcId+'" d="M 26 102 A 74 74 0 1 1 174 102"/></defs><circle cx="100" cy="100" r="90" class="seal-ring-outer"/><circle cx="100" cy="100" r="76" class="seal-ring-inner"/><text class="seal-arctext"><textPath href="#'+arcId+'" startOffset="50%" text-anchor="middle">바다거북스프 평결부</textPath></text><g transform="translate(100,82)">'+turtleGlyph()+'</g><text x="100" y="132" class="seal-main-text">'+escapeHtml(mainText)+'</text><text x="100" y="150" class="seal-sub-text">'+escapeHtml(subText)+'</text></svg>';}
+function brandIcon(){return'<svg viewBox="0 0 100 100"><g stroke="var(--gold)" fill="var(--gold)"><circle cx="50" cy="50" r="44" fill="none" stroke-width="2.4"/><circle cx="50" cy="50" r="36" fill="none" stroke-width="1.1"/><g transform="translate(50,48) scale(0.92)"><ellipse cx="0" cy="0" rx="25" ry="17"/><path d="M -19 0 L -9 -13 L 9 -13 L 19 0 L 9 13 L -9 13 Z" fill="var(--ink-bg)" stroke="none"/><circle cx="-23" cy="-9" r="5.5"/><circle cx="21" cy="2" r="5"/><circle cx="-15" cy="13" r="5"/><circle cx="13" cy="14" r="5"/></g></g></svg>';}
+
+/* ===== role / eligibility ===== */
+function isJudge(){return currentUser&&currentUser.role==='평가자';}
+function isQuestioner(){return currentUser&&currentUser.role==='출제자';}
+function isPlayer(){return currentUser&&currentUser.role==='참가자';}
+function canVoteOn(poll){if(!currentUser)return false;if(poll.type==='score')return isJudge();return poll.voterRole==='전체'||poll.voterRole===currentUser.role;}
+function canCreateScorePoll(){return isJudge();}
+function canClosePoll(){return isJudge();}
+function isChief(){return currentUser&&appState.chiefId&&appState.chiefId===currentUser.id;}
+
+/* ===== pending counts ===== */
+function pendingApprovalCount(){return appState.approvals.filter(function(a){return a.status==='pending';}).length;}
+function pendingQuestionCount(){return appState.questions.filter(function(q){return q.status==='pending';}).length;}
+
+/* ===== render: join ===== */
+function renderJoin(){
+  document.getElementById('app').innerHTML=
+    '<div class="join-shell"><div class="join-card">'+
+      '<div class="brandmark">'+brandIcon()+'</div>'+
+      '<h1>바다거북스프 평결부</h1>'+
+      '<p class="tagline">시행령 기반 실시간 투표 · 승인 · 질문 시스템</p>'+
+      '<form id="joinForm">'+
+        '<label for="joinName">이름</label>'+
+        '<input type="text" id="joinName" maxlength="12" placeholder="화면에 표시될 이름" required/>'+
+        '<fieldset class="role-pick"><legend>역할</legend>'+
+          '<div class="role-grid">'+
+            '<label class="role-opt"><input type="radio" name="role" value="평가자" checked/> 평가자</label>'+
+            '<label class="role-opt"><input type="radio" name="role" value="출제자"/> 출제자</label>'+
+            '<label class="role-opt"><input type="radio" name="role" value="참가자"/> 참가자</label>'+
+          '</div>'+
+        '</fieldset>'+
+        '<button type="submit" class="btn btn-primary">참여하기</button>'+
+      '</form>'+
+      '<p class="share-hint">이 화면의 링크를 다른 참여자에게 공유하세요. 같은 링크를 열면 같은 투표함을 공유합니다.</p>'+
+    '</div></div>';
+  document.getElementById('joinForm').addEventListener('submit',async function(e){
+    e.preventDefault();
+    var name=document.getElementById('joinName').value.trim();
+    if(!name)return;
+    var role=document.querySelector('input[name=role]:checked').value;
+    await registerParticipant(name,role);
+  });
+}
+async function registerParticipant(name,role){
+  var id=genId();
+  var joinedAt = Date.now();
+
+currentUser={
+  id:id,
+  name:name,
+  role:role,
+  joinedAt:joinedAt
+};
+  await storageSet(
+  'participant:'+id,
+  JSON.stringify({
+    name:name,
+    role:role,
+    joinedAt:joinedAt,
+    lastSeen:Date.now()
+  })
+);
+  await set(
+  ref(db,'participants/'+id),
+  {
+    name:name,
+    role:role,
+    joinedAt:Date.now()
+  }
+);
+  try{await saveAudit('participant_joined',{participantId:id,name:name,role:role});}catch(e){}
+  startHeartbeat();
+  await refreshAll(true);
+}
+async function leaveAndRejoin(){
+  if(currentUser){await storageDelete('participant:'+currentUser.id);}
+  currentUser=null;
+  if(heartbeatTimer){clearInterval(heartbeatTimer);heartbeatTimer=null;}
+  composerOpen=false;
+  renderJoin();
+}
+
+/* ===== render: main shell ===== */
+function renderMain(){
+  var root=document.getElementById('app');
+  var roleTagClass=isJudge()?'judge':(isQuestioner()?'questioner':'player');
+
+  var pendA=pendingApprovalCount();
+  var pendQ=pendingQuestionCount();
+
+  var chiefInfo='';
+  if(appState.chiefId){
+    var chiefPerson=appState.roster.find(function(r){return r.id===appState.chiefId;});
+    if(chiefPerson) chiefInfo='<span class="chief-badge">⚖ 평가장: '+escapeHtml(chiefPerson.name)+'</span>';
+  }
+
+  root.innerHTML=
+    '<header class="hdr">'+
+      '<div class="hdr-top">'+
+        '<div class="brandmark">'+brandIcon()+'</div>'+
+        '<div class="hdr-title"><h1>바다거북스프 평결부</h1><div class="sub">실시간 투표 · 승인 · 질문 시스템</div></div>'+
+      '</div>'+
+      '<div class="user-badge">'+
+        '<div class="who">'+escapeHtml(currentUser.name)+'<span class="role-tag '+roleTagClass+'">'+currentUser.role+'</span>'+
+        (isChief()?' <span style="font-size:10px;color:var(--gold);font-family:\'IBM Plex Mono\',monospace;">⚖평가장</span>':'')+
+        '</div>'+
+        '<button id="leaveBtn" type="button">변경</button>'+
+      '</div>'+
+      (chiefInfo?'<div style="margin-top:10px;">'+chiefInfo+'</div>':'')+
+    '</header>'+
+    '<nav class="main-nav">'+
+      '<button class="nav-btn'+(activeTab==='vote'?' active':'')+'" data-tab="vote">투표</button>'+
+      '<button class="nav-btn'+(activeTab==='approve'?' active':'')+'" data-tab="approve">승인·이의제기'+(pendA>0?'<span class="nav-badge">'+pendA+'</span>':'')+' </button>'+
+      '<button class="nav-btn'+(activeTab==='question'?' active':'')+'" data-tab="question">질문'+(pendQ>0&&isJudge()?'<span class="nav-badge">'+pendQ+'</span>':'')+' </button>'+
+      '<button class="nav-btn'+(activeTab==='roster'?' active':'')+'" data-tab="roster">명부</button>'+
+    '</nav>'+
+    '<main class="wrap">'+
+      '<div id="tabContent"></div>'+
+    '</main>'+
+    '<footer class="legal-footnote">본 도구는 「바다거북스프 게임 운영에 관한 시행령(통합 개정안)」 및 「룰」에 근거한 비공식 투표 보조 도구입니다.</footer>';
+
+  document.getElementById('leaveBtn').addEventListener('click',leaveAndRejoin);
+  document.querySelectorAll('.nav-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){activeTab=btn.getAttribute('data-tab');renderTabContent();});
+  });
+  renderTabContent();
+}
+
+function renderTabContent(){
+  if(activeTab==='vote') renderVoteTab();
+  else if(activeTab==='approve') renderApproveTab();
+  else if(activeTab==='question') renderQuestionTab();
+  else if(activeTab==='roster') renderRosterTab();
+  
+  // ← input 값 전역 복원 (모든 탭에서)
+  setTimeout(function(){
+    try{
+      var inputs=document.querySelectorAll('input,textarea,select');
+      inputs.forEach(function(el){
+        if(el.id && appState._savedInputs[el.id]){
+          var saved=appState._savedInputs[el.id];
+          if(el.type==='checkbox') el.checked=saved.value;
+          else el.value=saved.value;
+          // 커서 위치도 복원
+          if(el.selectionStart!==undefined && saved.selectionStart!==undefined){
+            try{ el.setSelectionRange(saved.selectionStart, saved.selectionEnd); }catch(e){}
+          }
+        }
+      });
+      // focus 복원
+      if(appState._focusedElementId){
+        var focEl=document.getElementById(appState._focusedElementId);
+        if(focEl && (focEl.tagName==='INPUT'||focEl.tagName==='TEXTAREA'||focEl.tagName==='SELECT')){
+          focEl.focus();
+        }
+      }
+    }catch(e){}
+  },10);
+}
+
+/* =====================================================
+   TAB: 투표
+===================================================== */
+function renderVoteTab(){
+  var box=document.getElementById('tabContent');
+  var poll=appState.activePoll;
+  var html='';
+
+  // live section
+  html+='<section><div class="section-label"><span class="no mono">제 '+(poll?poll.no:'-')+'호</span><span class="name">진행 중인 의안</span></div>';
+  if(!poll){
+    html+='<div class="card empty">진행 중인 투표가 없습니다.</div>';
+  } else {
+    var typeLabel=poll.type==='score'?'정답 판정 · 점수평가':(PRESET_LABEL[poll.preset]||'찬반투표');
+    var statusPill=poll.status==='open'?'<span class="status-pill open">투표함 열림</span>':'<span class="status-pill closed">선고 완료</span>';
+    var expireHtml='';
+    if(poll.expiresAt && poll.status==='open'){
+      var rem=Math.max(0,Math.floor((poll.expiresAt-Date.now())/1000));
+      var m=Math.floor(rem/60);var s=rem%60;var label=(m>0?m+'분 ':'')+s+'초 남음';
+      expireHtml='<div id="pollCountdown" style="font-size:12px;color:var(--text-soft);margin-top:6px;">⏱ '+label+'</div>';
+    }
+    html+='<div class="card">'+
+      '<div class="poll-head"><div><div class="tag">'+escapeHtml(typeLabel)+'</div><h3>'+escapeHtml(poll.title)+'</h3></div>'+statusPill+'</div>'+
+      '<div class="poll-meta">투표 대상: '+escapeHtml(poll.voterRole)+'</div>'+
+      (poll.detail?('<div class="a-body">'+escapeHtml(poll.detail)+'</div>'):'')+
+      '<div id="voteInputs"></div>'+expireHtml+'<div class="hairline"></div><div id="tallyResults"></div>';
+    if(poll.status==='open'&&canClosePoll()) html+='<button id="closePollBtn" type="button" class="btn btn-secondary">마감하고 결과 확정</button>';
+    html+='</div>';
+  }
+  html+='</section>';
+
+  // composer
+  html+='<section id="composerSection"></section>';
+
+  // history
+  var closed=appState.polls.filter(function(p){return p.status==='closed';}).sort(function(a,b){return b.closedAt-a.closedAt;});
+  html+='<section><div class="section-label"><span class="no mono">기록</span><span class="name">선고록</span></div>';
+  if(closed.length===0){
+    html+='<div class="card empty">아직 마감된 투표가 없습니다.</div>';
+  } else {
+    html+=closed.map(function(p){
+      var passLabel,passClass,sub;
+      if(p.type==='score'){passLabel=p.result.finalPass?'정답':'오답';passClass=p.result.finalPass?'pass':'fail';sub='정답판정 '+p.result.rate.toFixed(0)+'% ('+p.result.passCount+'/'+p.result.total+')';}
+      else{passLabel=p.result.pass?'가결':'부결';passClass=p.result.pass?'pass':'fail';sub=p.result.label+' · 찬성 '+p.result.yes+' 반대 '+p.result.no;}
+      return'<div class="hist-item"><div class="hist-top"><span class="title">제'+p.no+'호 · '+escapeHtml(p.title)+'</span><span class="hist-stamp '+passClass+'">'+passLabel+'</span></div><div class="hist-sub">'+escapeHtml(sub)+'</div></div>';
+    }).join('');
+  }
+  html+='</section>';
+
+  box.innerHTML=html;
+  // settings UI: 자동 미참여 및 게임 기록 초기화
+  var settingsHtml='';
+  settingsHtml+='<section><div class="section-label"><span class="no mono">설정</span><span class="name">세션 제어</span></div>'+
+    '<div class="card">'+
+    '<div class="checkrow"><input type="checkbox" id="autoRemoveChk"/>'+
+    '<label for="autoRemoveChk">창 닫을 때 자동으로 미참여(삭제) 처리</label></div>'+
+    '<div class="checkrow"><input type="checkbox" id="clearGameChk"/>'+
+    '<label for="clearGameChk">창 닫을 때 게임 기록(의안/승인/질문/투표 등) 보관 후 삭제</label></div>'+
+    '<div style="margin-top:10px;display:flex;gap:8px;">'+
+    '<button id="clearAllParticipantsBtn" class="btn btn-ghost btn-sm">모든 참여자 초기화</button>'+
+    '<button id="clearGameBtn" class="btn btn-danger btn-sm">게임 기록 초기화 (보관)</button>'+
+    '<button id="viewArchivesBtn" class="btn btn-secondary btn-sm">보관된 게임 로그 보기</button></div>'+
+    '</div></section>';
+  box.insertAdjacentHTML('beforeend',settingsHtml);
+
+  // load settings defaults
+  try{if(window.localStorage.getItem('setting:autoRemoveOnClose')===null) window.localStorage.setItem('setting:autoRemoveOnClose','true');}catch(e){}
+  try{if(window.localStorage.getItem('setting:clearGameOnLeave')===null) window.localStorage.setItem('setting:clearGameOnLeave','true');}catch(e){}
+  var autoChk=document.getElementById('autoRemoveChk'); if(autoChk) autoChk.checked=(window.localStorage.getItem('setting:autoRemoveOnClose')==='true');
+  var clearChk=document.getElementById('clearGameChk'); if(clearChk) clearChk.checked=(window.localStorage.getItem('setting:clearGameOnLeave')==='true');
+
+  if(autoChk) autoChk.addEventListener('change',function(){window.localStorage.setItem('setting:autoRemoveOnClose',autoChk.checked?'true':'false');});
+  if(clearChk) clearChk.addEventListener('change',function(){window.localStorage.setItem('setting:clearGameOnLeave',clearChk.checked?'true':'false');});
+
+  var clearAllBtn=document.getElementById('clearAllParticipantsBtn');
+  if(clearAllBtn) clearAllBtn.addEventListener('click',async function(){if(!confirm('모든 참여자를 초기화합니다. 진행하시겠습니까?'))return;await clearAllParticipants();alert('참여자 초기화 완료');await refreshAll(true);});
+
+  var clearGameBtnEl=document.getElementById('clearGameBtn');
+  if(clearGameBtnEl) clearGameBtnEl.addEventListener('click',async function(){if(!confirm('게임 기록을 보관하고 삭제합니다. 진행하시겠습니까?'))return;var res=await archiveAndClearGameRecords();if(res.ok){alert('게임 기록 초기화 완료. 보관키: '+res.archive);}else{alert('초기화 실패: '+(res.error||''));}await refreshAll(true);});
+
+  var viewArch=document.getElementById('viewArchivesBtn');
+  if(viewArch) viewArch.addEventListener('click',async function(){var keys=await listArchives();if(!keys||keys.length===0){alert('보관된 게임 로그가 없습니다.');return;}var list=keys.join('\n');var pick=prompt('보관된 키 목록:\n'+list+'\n\n열람하려는 키를 정확히 입력하세요:');if(!pick)return;var data=await fetchArchive(pick);if(!data){alert('해당 키를 찾을 수 없습니다.');return;}var w=window.open('','_blank');if(w){w.document.write('<pre>'+escapeHtml(JSON.stringify(data,null,2))+'</pre>');w.document.title='Archive '+pick;}else{alert('새 창이 차단되었습니다. 콘솔에서 확인하세요.');console.log(data);} });
+
+  if(poll){renderVoteInputs();renderTally();var cb=document.getElementById('closePollBtn');if(cb)cb.addEventListener('click',handleClosePoll);}
+  renderComposerSection();
+}
+
+function renderVoteInputs(){
+  var el=document.getElementById('voteInputs');if(!el)return;
+  var poll=appState.activePoll;
+  if(!poll||poll.status!=='open'){el.innerHTML='';return;}
+  if(!canVoteOn(poll)){el.innerHTML='<p style="font-size:12.5px;color:var(--text-soft);margin:0 0 4px;">투표권이 없습니다 · 결과만 확인할 수 있어요.</p>';return;}
+  var myVote=appState.votes[currentUser.id];
+  if(poll.type==='score'){
+    var prefill=myVote||{ctx:5,ctxt:5,rat:5,sim:5,det:5};
+    var rows=CATS.map(function(c){return'<div class="score-row"><label for="sc_'+c.key+'">'+c.label+'</label><input type="range" min="0" max="10" step="1" value="'+prefill[c.key]+'" id="sc_'+c.key+'" data-cat="'+c.key+'"/><output id="out_'+c.key+'">'+prefill[c.key]+'</output></div>';}).join('');
+    el.innerHTML=rows+'<button id="submitScoreBtn" type="button" class="btn btn-primary">'+(myVote?'채점 다시 제출':'채점 제출')+'</button>';
+    CATS.forEach(function(c){var input=document.getElementById('sc_'+c.key);var out=document.getElementById('out_'+c.key);input.addEventListener('input',function(){out.textContent=input.value;});});
+    document.getElementById('submitScoreBtn').addEventListener('click',async function(){var vals={};CATS.forEach(function(c){vals[c.key]=Number(document.getElementById('sc_'+c.key).value);});await castVoteWithLog(poll.id,vals);await refreshAll(false);});
+  } else {
+    el.innerHTML='<div class="consent-buttons"><button class="btn-yes '+(myVote==='찬성'?'active':'')+'" data-v="찬성">찬성</button><button class="btn-no '+(myVote==='반대'?'active':'')+'" data-v="반대">반대</button></div>';
+    el.querySelectorAll('button[data-v]').forEach(function(btn){btn.addEventListener('click',async function(){await castVoteWithLog(poll.id,btn.getAttribute('data-v'));await refreshAll(false);});});
+  }
+}
+
+function renderTally(){
+  var el=document.getElementById('tallyResults');if(!el)return;
+  var poll=appState.activePoll;if(!poll){el.innerHTML='';return;}
+  var votes=appState.votes;
+  if(poll.type==='score'){
+    var res=computeScoreResult(votes,poll.denom);
+    if(poll.status==='open'){
+      if(isJudge()){
+        var rows=res.breakdown.map(function(b){var person=appState.roster.find(function(r){return r.id===b.id;});var nm=person?person.name:'익명';return'<tr><td class="name">'+escapeHtml(nm)+'</td>'+b.vals.map(function(v){return'<td>'+v+'</td>';}).join('')+'<td>'+b.avg.toFixed(1)+'</td><td class="'+(b.pass?'pass-yes':'pass-no')+'">'+(b.pass?'정답':'오답')+'</td></tr>';}).join('');
+        el.innerHTML='<div class="tally-line"><span>제출 '+res.submitted+'명 · 기준 '+res.total+'명</span><span>정답판정 '+res.rate.toFixed(0)+'% (기준 60%)</span></div><div class="bar-track"><div class="bar-fill '+(res.finalPass?'teal':'red')+'" style="width:'+Math.min(res.rate,100)+'%"></div></div><table class="evaltable"><thead><tr><th>평가자</th><th>맥락</th><th>문맥</th><th>합리</th><th>유사</th><th>상세</th><th>평균</th><th>판정</th></tr></thead><tbody>'+rows+'</tbody></table>';
+      } else {
+        el.innerHTML='<p style="font-size:12.5px;color:var(--text-soft);margin:0;">채점 진행 중 · 평가자 '+res.submitted+'명 제출 완료</p>';
+      }
+    } else {
+      var sealHtml=renderSeal(res.finalPass?'정답으로 인정':'오답','정답판정 '+res.rate.toFixed(0)+'% · '+res.passCount+'/'+res.total,res.finalPass?'pass':'fail');
+      var catRows=CATS.map(function(c,i){return'<div class="tally-line"><span>'+c.label+'</span><span>'+res.catAvg[i].toFixed(1)+' / 10</span></div>';}).join('');
+      var rawTable='';
+      if(isJudge()){var rows2=res.breakdown.map(function(b){var person=appState.roster.find(function(r){return r.id===b.id;});var nm=person?person.name:'익명';return'<tr><td class="name">'+escapeHtml(nm)+'</td>'+b.vals.map(function(v){return'<td>'+v+'</td>';}).join('')+'<td>'+b.avg.toFixed(1)+'</td><td class="'+(b.pass?'pass-yes':'pass-no')+'">'+(b.pass?'정답':'오답')+'</td></tr>';}).join('');rawTable='<details class="raw"><summary>평가자별 채점 원본 보기</summary><table class="evaltable"><thead><tr><th>평가자</th><th>맥락</th><th>문맥</th><th>합리</th><th>유사</th><th>상세</th><th>평균</th><th>판정</th></tr></thead><tbody>'+rows2+'</tbody></table></details>';}
+      el.innerHTML='<div class="seal-wrap">'+sealHtml+'</div>'+catRows+rawTable;
+    }
+    return;
+  }
+  var cres=computeConsentResult(votes,poll.denom,poll.preset,poll.override);
+  if(poll.status==='open'){
+    el.innerHTML='<div class="tally-line"><span>찬성 '+cres.yes+' · 반대 '+cres.no+'</span><span>제출 '+cres.submitted+'명</span></div><div class="bar-track"><div class="bar-fill teal" style="width:'+(cres.N?Math.min(cres.yes/cres.N*100,100):0)+'%"></div></div><p style="font-size:11.5px;color:var(--text-soft);margin:0;">의결 기준: '+escapeHtml(cres.label)+'</p>';
+  } else {
+    var sealHtml2=renderSeal(cres.pass?'가결':'부결',escapeHtml(cres.label)+' · 찬성 '+cres.yes+'/'+cres.N,cres.pass?'pass':'fail');
+    el.innerHTML='<div class="seal-wrap">'+sealHtml2+'</div>';
+  }
+}
+
+async function handleClosePoll(){
+  var poll=appState.activePoll;if(!poll)return;
+  // delegate to finalizePoll to handle closing logic
+  await finalizePoll(poll);
+  await refreshAll(true);
+}
+
+async function finalizePoll(poll){
+  try{
+    var freshVotes=await fetchVotes(poll.id);
+    var result=poll.type==='score'?computeScoreResult(freshVotes,poll.denom):computeConsentResult(freshVotes,poll.denom,poll.preset,poll.override);
+    // 반대가 2인 이상일 경우 출제자 지명 절차 자동 시작 (로그 및 공지)
+    try{
+      if(result.no>=2){
+        await saveAudit('trigger_designate_questioner',{pollId:poll.id,no:result.no});
+        await storageSet('nomination_pending',JSON.stringify({startedAt:Date.now(),triggerPollId:poll.id}));
+        await createApprovalWithLog({type:'question',title:'[출제자 지명 절차 시작]',body:'반대 2인 이상 발생하여 출제자 지명 절차가 시작됩니다. 평가장이 후보 중 선택하세요.',authorId:currentUser?currentUser.id:null,authorName:currentUser?currentUser.name:'시스템',isNotice:true});
+      }
+    }catch(e){console.error('nomination trigger failed',e);}    
+    await closePollWithResult(poll,result);
+    try{await saveAudit('poll_closed',{pollId:poll.id,result:result});}catch(e){}
+    // 평가장 선임 투표 결과 반영
+    if(poll.preset==='chiefvote'&&result.pass&&poll.candidateId){
+      await saveChief({id:poll.candidateId,name:poll.candidateName,appointedAt:Date.now()});
+      try{await saveAudit('chief_assigned',{id:poll.candidateId,name:poll.candidateName,pollId:poll.id});}catch(e){}
+    }
+    // 전담 평가원 선임 부결 시 반대자 리스트 저장 (출제자가 선택하도록 대기)
+    if(poll.preset && poll.preset.indexOf && poll.preset.indexOf('chair:')===0 && !result.pass && freshVotes){
+      try{
+        var chairRole=poll.preset.split(':')[1];
+        var disagreeIds=Object.keys(freshVotes).filter(function(id){return freshVotes[id]!=='찬성';});
+        if(disagreeIds&&disagreeIds.length>0){
+          var disagreePersons=disagreeIds.map(function(id){var p=appState.roster.find(function(r){return r.id===id;});return{id:id,name:p?p.name:'(알 수 없음)'};});
+          appState.chairAutoSelectDisagreers={role:chairRole,failedPollId:poll.id,disagreeList:disagreePersons};
+          var roleLabel=chairRole==='approve'?'승인 전담':chairRole==='question'?'질문 전담':chairRole==='answer'?'정답 전담':chairRole==='rule'?'규칙 전담':chairRole==='approval_only'?'승인만 전담':'전담';
+          await saveAudit('chair_'+chairRole+'_failed_waitforselect',{failedPollId:poll.id,disagreeCount:disagreePersons.length,disagreeList:disagreePersons});
+          await createApprovalWithLog({type:'question',title:'['+roleLabel+' 평가원 재선임 대기]',body:roleLabel+' 평가원 선임 반대 '+disagreePersons.length+'명: '+disagreePersons.map(function(p){return p.name;}).join(', ')+'. 출제자가 다음 후보를 선택하세요.',authorId:currentUser?currentUser.id:null,authorName:currentUser?currentUser.name:'시스템',isNotice:true});
+        }
+      }catch(e){console.error('chair vote fail wait for select',e);}    
+    }
+    // 전담 평가원 선임 성공 시 데이터 저장
+    if(poll.preset && poll.preset.indexOf && poll.preset.indexOf('chair:')===0 && result.pass && poll.candidateId){
+      try{
+        var chairRole=poll.preset.split(':')[1];
+        var chairs=await fetchChairs()||{};
+        chairs[chairRole]={id:poll.candidateId,name:poll.candidateName,appointedAt:Date.now()};
+        await saveChairs(chairs);
+        await saveAudit('chair_assigned',{role:chairRole,id:poll.candidateId,name:poll.candidateName,pollId:poll.id});
+      }catch(e){console.error('apply chair result',e);}    
+    }
+    // 평가장 선임 부결 시 자동 재시도 절차
+    if(poll.preset==='chiefvote' && !result.pass){
+      try{
+        await saveAudit('chiefvote_failed',{pollId:poll.id,yes:result.yes||0,no:result.no||0});
+        // 자동 재발의: 간단히 동일 기준으로 재발의하도록 함
+        await createPollWithLog({type:'consent',preset:'chiefvote',title:'평가장 선임 재시도 — 재발의',detail:'이전 선임안이 부결되어 재발의가 자동으로 시작됩니다.',denom:poll.denom||Math.max(appState.roster.filter(function(r){return r.role==='평가자';}).length,1),voterRole:'평가자'});
+      }catch(e){console.error('chiefvote retry failed',e);}    
+    }
+    // 질문 합의 처리
+    if(poll.preset==='qagree'){
+      if(result.pass && poll.proposedQuestion){
+        var qs=await fetchQuestions();
+        var qno=qs.length+1;
+        var qObj=Object.assign({},poll.proposedQuestion,{no:qno,status:'pending'});
+        qs.push(qObj);
+        await saveQuestions(qs);
+        await createApprovalWithLog({type:'question',title:'[상정 완료] 질문 Q'+qno+' 등록',body:'질문이 합의되어 상정되었습니다: '+qObj.text,authorId:currentUser?currentUser.id:null,authorName:currentUser?currentUser.name:'시스템',isNotice:true,relatedQuestionId:qObj.id});
+      } else if(!result.pass && poll.proposedQuestion){
+        await createApprovalWithLog({type:'question',title:'[상정 기각] 질문 제안 불가',body:'제안된 질문이 합의되지 않아 상정되지 않았습니다. 제안: '+(poll.proposedQuestion&&poll.proposedQuestion.text||'(없음)'),authorId:currentUser?currentUser.id:null,authorName:currentUser?currentUser.name:'시스템',isNotice:true,relatedQuestionId:poll.proposedQuestion&&poll.proposedQuestion.id});
+      }
+    }
+  }catch(e){console.error('finalizePoll error',e);}  
+}
+
+/* ---- composer ---- */
+function renderComposerSection(){
+  var box=document.getElementById('composerSection');if(!box)return;
+  var hasOpen=!!appState.activePoll&&appState.activePoll.status==='open';
+  var judgeCount=appState.roster.filter(function(r){return r.role==='평가자';}).length;
+  var playerCount=appState.roster.filter(function(r){return r.role==='참가자';}).length;
+
+  // ← 커서 초기화 방지: 기존 form 값 저장
+  var savedFormValues={};
+  if(composerOpen){
+    try{
+      ['scoreTitle','scoreDetail','scoreDenom','scoreExpire','chiefCandidate','chiefDetail','chiefDenom','chiefTwoThirds','chiefExpire','presetSel','consentTitle','consentDetail','freePct','freeVoterRole','consentDenom','consentExpire','apTitle','apBody','chairRoleSel','chairCandidate'].forEach(function(id){
+        var el=document.getElementById(id);
+        if(el){
+          savedFormValues[id]=(el.tagName==='INPUT'||el.tagName==='TEXTAREA'||el.tagName==='SELECT')?(el.type==='checkbox'?el.checked:el.value):'';
+        }
+      });
+    }catch(e){}
+  }
+
+  if(hasOpen){
+    box.innerHTML='<div class="section-label"><span class="no mono">발의</span><span class="name">새 의안</span></div><div class="card empty">진행 중인 투표를 마감한 뒤 새 의안을 발의할 수 있습니다.</div>';
+    return;
+  }
+  if(!composerOpen){
+    box.innerHTML='<div class="section-label"><span class="no mono">발의</span><span class="name">새 의안</span></div><button id="openComposerBtn" type="button" class="btn btn-ghost">+ 새 의안 발의</button>';
+    document.getElementById('openComposerBtn').addEventListener('click',function(){composerOpen=true;renderComposerSection();});
+    return;
+  }
+
+  // 탭 구성 — 참가자도 찬반 투표 탭 접근 가능
+  var tabLabels={score:'점수 평가',consent:'찬반 투표',chief:'평가장 선임'};
+  var tabs=isJudge()?['score','consent']:(isQuestioner()?['consent','chief']:['consent']);
+
+  var tabsHtml='<div class="tabs">'+tabs.map(function(t){return'<button type="button" class="tab-btn'+(composerTab===t?' active':'')+'" data-tab="'+t+'">'+tabLabels[t]+'</button>';}).join('')+'</div>';
+
+  var formHtml='';
+  if(composerTab==='score'){
+    if(!canCreateScorePoll()){formHtml='<p style="font-size:12.5px;color:var(--text-soft-onink);">점수 평가 의안은 평가자만 발의할 수 있습니다.</p>';}
+    else{formHtml='<div class="field"><label for="scoreTitle">의안 제목</label><input type="text" id="scoreTitle" placeholder="예: 정답 판정 투표"/></div><div class="field"><label for="scoreDetail">상세 내용</label><textarea id="scoreDetail" placeholder="선택: 투표의 상세한 설명을 입력하세요..."/></textarea></div><div class="field"><label for="scoreDenom">기준 평가자 수 (60% 산정 기준)</label><input type="number" id="scoreDenom" min="1" value="'+Math.max(judgeCount,1)+'"/><div class="hint">현재 등록된 평가자 '+judgeCount+'명을 기본값으로 채웠습니다.</div></div><div class="field"><label for="scoreExpire">만료(초) - 비워두면 없음</label><input type="number" id="scoreExpire" min="10" placeholder="예: 60"/></div><button id="submitScorePoll" type="button" class="btn btn-primary">의안 발의</button>';}  
+  } else if(composerTab==='chief'){
+    if(!isQuestioner()){formHtml='<p style="font-size:12.5px;color:var(--text-soft-onink);">평가장 선임 의안은 출제자만 발의할 수 있습니다.</p>';}
+    else{
+      var judges=appState.roster.filter(function(r){return r.role==='평가자';});
+      var judgeOpts=judges.map(function(j){return'<option value="'+escapeHtml(j.id)+'">'+escapeHtml(j.name)+'</option>';}).join('');
+      formHtml='<div class="field"><label for="chiefCandidate">전담 평가원 후보 지명</label><select id="chiefCandidate">'+(judgeOpts||'<option>평가자 없음</option>')+'</select></div>'+
+        '<div class="field"><label for="chiefDetail">상세 내용</label><textarea id="chiefDetail" placeholder="선택: 선임 관련 상세 메모를 입력하세요..."></textarea></div>'+
+        '<div class="field"><label for="chiefDenom">기준 평가자 수 (전원 동의 필요)</label><input type="number" id="chiefDenom" min="1" value="'+Math.max(judgeCount,1)+'"/></div>'+
+        '<div class="checkrow"><input type="checkbox" id="chiefTwoThirds"/><label for="chiefTwoThirds">선임 절차 5회 이상 반복 → 3분의 2 기준 적용</label></div>'+
+        '<div class="field"><label for="chiefExpire">만료(초) - 비워두면 없음</label><input type="number" id="chiefExpire" min="10" placeholder="예: 120"/></div>'+
+        '<button id="submitChiefPoll" type="button" class="btn btn-primary" style="margin-top:12px;">전담 평가원 선임 의안 발의</button>';
+    }
+  } else {
+    // 역할별 의안 유형
+    var presetOptions=isJudge()
+      ?['objection','subrule','submission','qagree','free']
+      :(isQuestioner()?['submission','free']:['qagree','free']);
+    var optHtml=presetOptions.map(function(p){return'<option value="'+p+'">'+PRESET_LABEL[p]+'</option>';}).join('');
+    formHtml='<div class="field"><label for="preselSel">의안 유형</label><select id="presetSel">'+optHtml+'</select></div>'+
+      '<div class="field"><label for="consentTitle">의안 제목</label><input type="text" id="consentTitle" placeholder="예: 이번 질문 합의"/></div>'+
+      '<div class="field"><label for="consentDetail">상세 내용</label><textarea id="consentDetail" placeholder="선택: 의안에 대한 상세한 설명을 입력하세요..."></textarea></div>'+
+      '<div id="presetExtra"></div>'+
+      '<div class="field"><label for="consentExpire">만료(초) - 비워두면 없음</label><input type="number" id="consentExpire" min="10" placeholder="예: 60"/></div>'+
+      '<button id="submitConsentPoll" type="button" class="btn btn-primary">의안 발의</button>';
+  }
+
+  box.innerHTML='<div class="section-label"><span class="no mono">발의</span><span class="name">새 의안</span></div>'+
+    '<div class="card">'+tabsHtml+formHtml+'</div>'+
+    '<button id="closeComposerBtn" type="button" class="btn btn-ghost">접기</button>';
+
+  box.querySelectorAll('.tab-btn').forEach(function(btn){btn.addEventListener('click',function(){composerTab=btn.getAttribute('data-tab');renderComposerSection();});});
+  document.getElementById('closeComposerBtn').addEventListener('click',function(){composerOpen=false;renderComposerSection();});
+
+  if(composerTab==='score'&&canCreateScorePoll()){
+    document.getElementById('submitScorePoll').addEventListener('click',async function(){
+      var title=document.getElementById('scoreTitle').value.trim()||'정답 판정 투표';
+      var denom=Number(document.getElementById('scoreDenom').value)||Math.max(judgeCount,1);
+      var expEl=document.getElementById('scoreExpire');
+      var expiresAt=expEl&&expEl.value?Date.now()+Number(expEl.value)*1000:null;
+      await createPollWithLog({type:'score',title:title,detail:document.getElementById('scoreDetail')?document.getElementById('scoreDetail').value.trim():'',denom:denom,voterRole:'평가자',expiresAt:expiresAt});
+      try{clearLocalDraft('composer:score');}catch(e){}
+      composerOpen=false;await refreshAll(true);
+    });
+  }
+  if(composerTab==='chief'&&isQuestioner()){
+    var dc = null;
+    try{ dc = loadLocalDraft('composer:chief'); }catch(e){}
+    if(dc){
+      if(document.getElementById('chiefDetail')) document.getElementById('chiefDetail').value = dc.detail||'';
+      if(document.getElementById('chiefDenom')) document.getElementById('chiefDenom').value = dc.denom||document.getElementById('chiefDenom').value;
+      if(document.getElementById('chiefExpire')) document.getElementById('chiefExpire').value = dc.expires||'';
+      if(document.getElementById('chiefCandidate')) document.getElementById('chiefCandidate').value = dc.candidateId||document.getElementById('chiefCandidate').value;
+      if(document.getElementById('chiefTwoThirds')) document.getElementById('chiefTwoThirds').checked = dc.twoThirds||false;
+    }
+    var dch = null;
+    try{ dch = loadLocalDraft('composer:chair'); }catch(e){}
+    if(dch){
+      if(document.getElementById('chairRoleSel')) document.getElementById('chairRoleSel').value = dch.role||document.getElementById('chairRoleSel').value;
+      if(document.getElementById('chairCandidate')) document.getElementById('chairCandidate').value = dch.candidateId||document.getElementById('chairCandidate').value;
+    }
+    // 반대자 중 선택 UI: 전담 평가원 부결 중 appState.chairAutoSelectDisagreers 존재
+    setTimeout(function(){
+      if(appState.chairAutoSelectDisagreers && appState.chairAutoSelectDisagreers.disagreeList){
+        var asel=document.getElementById('chairAutoSelectDisagree');
+        if(asel){
+          var dlist=appState.chairAutoSelectDisagreers.disagreeList;
+          var roleLabel=appState.chairAutoSelectDisagreers.role==='approve'?'승인':appState.chairAutoSelectDisagreers.role==='question'?'질문':appState.chairAutoSelectDisagreers.role==='answer'?'정답':appState.chairAutoSelectDisagreers.role==='rule'?'규칙':appState.chairAutoSelectDisagreers.role==='approval_only'?'승인만':'전담';
+          var opts='<option value="">-- '+roleLabel+' 평가원 부결 반대자 중 선택 --</option>';
+          for(var i=0;i<dlist.length;i++){
+            opts+='<option value="'+escapeHtml(dlist[i].id)+'">'+escapeHtml(dlist[i].name)+'</option>';
+          }
+          asel.innerHTML=opts;
+          asel.parentElement.style.display='block';
+        }
+      } else {
+        var asel=document.getElementById('chairAutoSelectDisagree');
+        if(asel) asel.parentElement.style.display='none';
+      }
+    },100);
+
+    // 반대자 중 선택 발의 버튼
+    var submitChairAuto=document.getElementById('submitChairAutoSelect');
+    if(submitChairAuto){submitChairAuto.addEventListener('click',async function(){
+      var asel=document.getElementById('chairAutoSelectDisagree');
+      if(!asel||!asel.value){alert('반대자 중 후보를 선택하세요.');return;}
+      var candidateId=asel.value;
+      var selectedDisagree=appState.chairAutoSelectDisagreers.disagreeList.find(function(d){return d.id===candidateId;});
+      if(!selectedDisagree)return;
+      var roleLabel=appState.chairAutoSelectDisagreers.role==='approve'?'승인':appState.chairAutoSelectDisagreers.role==='question'?'질문':appState.chairAutoSelectDisagreers.role==='answer'?'정답':appState.chairAutoSelectDisagreers.role==='rule'?'규칙':appState.chairAutoSelectDisagreers.role==='approval_only'?'승인만':'전담';
+      var role='chair:'+appState.chairAutoSelectDisagreers.role;
+      var denom=Math.max(appState.roster.filter(function(r){return r.role==='평가자';}).length,1);
+      try{saveLocalDraft('composer:chair',{role:role,candidateId:candidateId});}catch(e){}
+      await createPollWithLog({type:'consent',preset:role,title:roleLabel+' 전담 평가원 재선임 [부결 반대자] — '+selectedDisagree.name,detail:'이전 '+roleLabel+' 평가원 선임이 부결되어 반대자 중 선택된 후보로 재선임합니다.',denom:denom,voterRole:'평가자',candidateId:candidateId,candidateName:selectedDisagree.name});
+      appState.chairAutoSelectDisagreers=null;
+      composerOpen=false;await refreshAll(true);
+    });}
+
+    var submitChief=document.getElementById('submitChiefPoll');
+    if(submitChief) submitChief.addEventListener('click',async function(){
+      var sel=document.getElementById('chiefCandidate');
+      if(!sel||!sel.value)return;
+      var candidateId=sel.value;
+      var candidatePerson=appState.roster.find(function(r){return r.id===candidateId;});
+      var candidateName=candidatePerson?candidatePerson.name:'(알 수 없음)';
+      var denom=Number(document.getElementById('chiefDenom').value)||Math.max(judgeCount,1);
+      var twoThirds=document.getElementById('chiefTwoThirds').checked;
+      var exp=document.getElementById('chiefExpire')?Number(document.getElementById('chiefExpire').value):null;
+      var expiresAt=exp?Date.now()+exp*1000:null;
+      await createPollWithLog({type:'consent',preset:'chiefvote',title:'평가장 선임 동의 — '+candidateName,detail:document.getElementById('chiefDetail')?document.getElementById('chiefDetail').value.trim():'',denom:denom,voterRole:'평가자',override:twoThirds?'twothirds':null,candidateId:candidateId,candidateName:candidateName,expiresAt:expiresAt});
+      try{clearLocalDraft('composer:chief');}catch(e){}
+      composerOpen=false;await refreshAll(true);
+    });
+  }
+  // chair poll submit binding
+  var submitChair=document.getElementById('submitChairPoll');
+  if(submitChair){submitChair.addEventListener('click',async function(){
+    var roleSel=document.getElementById('chairRoleSel');
+    var candSel=document.getElementById('chairCandidate');
+    if(!roleSel||!candSel||!candSel.value){alert('후보를 선택하세요.');return;}
+    var role=roleSel.value;var candidateId=candSel.value;var candidateName=candSel.options[candSel.selectedIndex].text;
+    var denom=Math.max(judgeCount,1);
+    try{ saveLocalDraft('composer:chair', { role: role, candidateId: candidateId }); }catch(e){}
+    var roleLabel=role==='chair:approve'?'승인 전담':role==='chair:question'?'질문 전담':role==='chair:answer'?'정답 전담':role==='chair:rule'?'규칙 전담':role==='chair:approval_only'?'승인만 전담':'전담';
+    await createPollWithLog({type:'consent',preset:role,title:'전담 평가원 선임 ['+roleLabel+'] — '+candidateName,detail:'전담 평가원 선임 투표',denom:denom,voterRole:'평가자',candidateId:candidateId,candidateName:candidateName,expiresAt:null});
+    try{clearLocalDraft('composer:chair');}catch(e){}
+    composerOpen=false;await refreshAll(true);
+  });}
+
+  // 전담 평가원 선임 UI (간단한 보조): 출제자 또는 평가원이 후보를 지명하여 선임 투표 생성
+  if(composerTab==='chief' && isQuestioner()){
+    var autoSelectUI='';
+    if(appState.chairAutoSelectDisagreers && appState.chairAutoSelectDisagreers.disagreeList && appState.chairAutoSelectDisagreers.disagreeList.length>0){
+      var roleLabel=appState.chairAutoSelectDisagreers.role==='approve'?'승인':appState.chairAutoSelectDisagreers.role==='question'?'질문':appState.chairAutoSelectDisagreers.role==='answer'?'정답':appState.chairAutoSelectDisagreers.role==='rule'?'규칙':appState.chairAutoSelectDisagreers.role==='approval_only'?'승인만':'전담';
+      var opts='<option value="">-- '+roleLabel+' 평가원 부결 반대자 중 선택 --</option>';
+      for(var i=0;i<appState.chairAutoSelectDisagreers.disagreeList.length;i++){
+        var d=appState.chairAutoSelectDisagreers.disagreeList[i];
+        opts+='<option value="'+escapeHtml(d.id)+'">'+escapeHtml(d.name)+'</option>';
+      }
+      autoSelectUI='<div style="padding:10px;background-color:#fff3cd;border-left:3px solid #ff6b6b;margin-bottom:15px;">'+
+        '<div class="field"><label for="chairAutoSelectDisagree">⚠ '+roleLabel+' 평가원 부결 반대자 중 선택</label>'+
+        '<select id="chairAutoSelectDisagree">'+opts+'</select></div>'+
+        '<button id="submitChairAutoSelect" type="button" class="btn btn-warning btn-sm" style="margin-top:8px;">선택된 후보로 재선임 발의</button></div>';
+    }
+    formHtml += autoSelectUI+'<div style="margin-top:12px;border-top:1px dashed rgba(107,94,71,0.2);padding-top:10px;">'+
+      '<div class="field"><label for="chairRoleSel">전담 역할 선임</label><select id="chairRoleSel">'+
+      '<option value="chair:approve">승인 전담 평가원</option>'+
+      '<option value="chair:question">질문 전담 평가원</option>'+
+      '<option value="chair:answer">정답 전담 평가원</option>'+
+      '<option value="chair:rule">규칙 전담 평가원</option>'+
+      '<option value="chair:approval_only">승인만 전담 평가원</option>'+
+      '</select></div>'+
+      '<div class="field"><label for="chairCandidate">후보 선택</label><select id="chairCandidate">'+(judgeOpts||'<option>평가자 없음</option>')+'</select></div>'+
+      '<button id="submitChairPoll" class="btn btn-sm btn-primary">전담 평가원 선임 발의</button></div>';
+  }
+  if(composerTab==='consent'){
+    var presetSel=document.getElementById('presetSel');
+    // if there is a saved draft for consent, apply its preset before rendering extras
+    var _consentDraft = null;
+    try{ _consentDraft = loadLocalDraft('composer:consent'); if(_consentDraft && document.getElementById('presetSel')) document.getElementById('presetSel').value = _consentDraft.preset||document.getElementById('presetSel').value; }catch(e){}
+    function renderExtra(){
+      var preset=presetSel.value;
+      var extra=document.getElementById('presetExtra');
+      // 기준인원 자동 계산
+      var defaultDenom=
+        preset==='submission'?Math.max(playerCount,1):
+        preset==='qagree'?Math.max(playerCount,1):
+        preset==='free'?Math.max(judgeCount+playerCount,1):
+        Math.max(judgeCount,1);
+      // 투표 대상 자동 결정
+      var defaultVoterRole=
+        preset==='submission'?'참가자':
+        preset==='qagree'?'참가자':
+        preset==='free'?'전체':
+        '평가자';
+      var voterRoleField=preset==='free'
+        ?'<div class="field"><label for="freeVoterRole">투표 대상</label>'+
+          '<select id="freeVoterRole">'+
+            '<option value="전체">전체</option>'+
+            '<option value="평가자">평가자</option>'+
+            '<option value="참가자">참가자</option>'+
+          '</select></div>'
+        :'<input type="hidden" id="freeVoterRole" value="'+defaultVoterRole+'"/>';
+      var pctField=preset==='free'?'<div class="field"><label for="freePct">의결 기준 (찬성 %)</label><input type="number" id="freePct" min="1" max="100" value="50"/></div>':'';
+      var subruleField=preset==='subrule'?'<div class="checkrow"><input type="checkbox" id="subruleTwoThirds"/><label for="subruleTwoThirds">평가장 선임 5회 이상 반복 (3분의 2 기준)</label></div>':'';
+      var qagreeNote=preset==='qagree'?'<div class="field hint" style="background:rgba(184,146,63,0.1);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--gold);">참가자들의 5분의 4 이상 찬성 시 가결됩니다.</div>':'';
+      extra.innerHTML=
+        '<div class="field"><label for="consentDenom">기준 인원 수</label>'+
+        '<input type="number" id="consentDenom" min="1" value="'+defaultDenom+'"/>'+
+        '<div class="hint">의결 기준이 되는 투표권자 수입니다.</div></div>'+
+        voterRoleField+pctField+subruleField+qagreeNote;
+    }
+    presetSel.addEventListener('change',renderExtra);renderExtra();
+    // after extras are rendered, restore draft values for dynamic fields if present
+    try{
+      if(_consentDraft){
+        if(document.getElementById('freePct') && _consentDraft.freePct!=null) document.getElementById('freePct').value = _consentDraft.freePct;
+        if(document.getElementById('freeVoterRole') && _consentDraft.voterRole) document.getElementById('freeVoterRole').value = _consentDraft.voterRole;
+        if(document.getElementById('consentDenom') && _consentDraft.denom!=null) document.getElementById('consentDenom').value = _consentDraft.denom;
+      }
+    }catch(e){}
+    document.getElementById('submitConsentPoll').addEventListener('click',async function(){
+      var preset=presetSel.value;
+      var title=document.getElementById('consentTitle').value.trim()||PRESET_LABEL[preset];
+      var denom=Number(document.getElementById('consentDenom').value)||1;
+      // voterRole: free는 select, 나머지는 hidden input 또는 고정값
+      var vrEl=document.getElementById('freeVoterRole');
+      var voterRole=vrEl?vrEl.value:'참가자';
+      var override=null;
+      if(preset==='subrule'){override=document.getElementById('subruleTwoThirds').checked?'twothirds':null;}
+      else if(preset==='free'){override={percent:Number(document.getElementById('freePct').value)||50};}
+      var expEl=document.getElementById('consentExpire');
+      var expiresAt=expEl&&expEl.value?Date.now()+Number(expEl.value)*1000:null;
+      await createPollWithLog({type:'consent',preset:preset,title:title,detail:document.getElementById('consentDetail')?document.getElementById('consentDetail').value.trim():'',denom:denom,voterRole:voterRole,override:override,expiresAt:expiresAt});
+      try{clearLocalDraft('composer:consent');}catch(e){}
+      composerOpen=false;await refreshAll(true);
+    });
+  }
+
+  // Composer autosave & restore (local drafts)
+  (function(){
+    try{
+      // score composer
+      var ds = loadLocalDraft('composer:score');
+      if(ds){ if(document.getElementById('scoreTitle')) document.getElementById('scoreTitle').value = ds.title||''; if(document.getElementById('scoreDetail')) document.getElementById('scoreDetail').value = ds.detail||''; if(document.getElementById('scoreDenom')) document.getElementById('scoreDenom').value = ds.denom||document.getElementById('scoreDenom').value; if(document.getElementById('scoreExpire')) document.getElementById('scoreExpire').value = ds.expires||''; }
+      ['scoreTitle','scoreDetail','scoreDenom','scoreExpire'].forEach(function(id){var el=document.getElementById(id); if(!el) return; el.addEventListener('input', function(){ try{ saveLocalDraft('composer:score', { title: document.getElementById('scoreTitle')?document.getElementById('scoreTitle').value.trim():'', detail: document.getElementById('scoreDetail')?document.getElementById('scoreDetail').value.trim():'', denom: document.getElementById('scoreDenom')?Number(document.getElementById('scoreDenom').value):null, expires: document.getElementById('scoreExpire')?document.getElementById('scoreExpire').value:'' }); }catch(e){} }); });
+
+      // chief composer
+      var dc = loadLocalDraft('composer:chief');
+      if(dc){ if(document.getElementById('chiefDetail')) document.getElementById('chiefDetail').value = dc.detail||''; if(document.getElementById('chiefDenom')) document.getElementById('chiefDenom').value = dc.denom||document.getElementById('chiefDenom').value; if(document.getElementById('chiefExpire')) document.getElementById('chiefExpire').value = dc.expires||''; if(document.getElementById('chiefCandidate')) document.getElementById('chiefCandidate').value = dc.candidateId||document.getElementById('chiefCandidate').value; }
+      ['chiefDetail','chiefDenom','chiefExpire'].forEach(function(id){var el=document.getElementById(id); if(!el) return; el.addEventListener('input', function(){ try{ saveLocalDraft('composer:chief', { detail: document.getElementById('chiefDetail')?document.getElementById('chiefDetail').value.trim():'', denom: document.getElementById('chiefDenom')?Number(document.getElementById('chiefDenom').value):null, expires: document.getElementById('chiefExpire')?document.getElementById('chiefExpire').value:'', candidateId: document.getElementById('chiefCandidate')?document.getElementById('chiefCandidate').value:null }); }catch(e){} }); });
+      var chiefCandidateSel=document.getElementById('chiefCandidate');
+      if(chiefCandidateSel){ chiefCandidateSel.addEventListener('change', function(){ try{ saveLocalDraft('composer:chief', { detail: document.getElementById('chiefDetail')?document.getElementById('chiefDetail').value.trim():'', denom: document.getElementById('chiefDenom')?Number(document.getElementById('chiefDenom').value):null, expires: document.getElementById('chiefExpire')?document.getElementById('chiefExpire').value:'', candidateId: document.getElementById('chiefCandidate')?document.getElementById('chiefCandidate').value:null }); }catch(e){} }); }
+
+      // consent composer
+      var cn = loadLocalDraft('composer:consent');
+      if(cn){ if(document.getElementById('consentTitle')) document.getElementById('consentTitle').value = cn.title||''; if(document.getElementById('consentDetail')) document.getElementById('consentDetail').value = cn.detail||''; if(document.getElementById('consentDenom')) document.getElementById('consentDenom').value = cn.denom||document.getElementById('consentDenom').value; if(document.getElementById('consentExpire')) document.getElementById('consentExpire').value = cn.expires||''; if(document.getElementById('presetSel')) document.getElementById('presetSel').value = cn.preset||document.getElementById('presetSel').value; if(document.getElementById('freePct')) document.getElementById('freePct').value = cn.freePct||document.getElementById('freePct').value; if(document.getElementById('freeVoterRole')) document.getElementById('freeVoterRole').value = cn.voterRole||document.getElementById('freeVoterRole').value; try{ if(typeof renderExtra==='function') renderExtra(); }catch(e){} }
+      ['consentTitle','consentDetail','consentDenom','consentExpire','freePct'].forEach(function(id){var el=document.getElementById(id); if(!el) return; el.addEventListener('input', function(){ try{ saveLocalDraft('composer:consent', { title: document.getElementById('consentTitle')?document.getElementById('consentTitle').value.trim():'', detail: document.getElementById('consentDetail')?document.getElementById('consentDetail').value.trim():'', denom: document.getElementById('consentDenom')?Number(document.getElementById('consentDenom').value):null, expires: document.getElementById('consentExpire')?document.getElementById('consentExpire').value:'', preset: document.getElementById('presetSel')?document.getElementById('presetSel').value:null, freePct: document.getElementById('freePct')?Number(document.getElementById('freePct').value):null, voterRole: document.getElementById('freeVoterRole')?document.getElementById('freeVoterRole').value:null }); }catch(e){} }); });
+      var presetSelEl=document.getElementById('presetSel');
+      if(presetSelEl){ presetSelEl.addEventListener('change', function(){ try{ saveLocalDraft('composer:consent', { title: document.getElementById('consentTitle')?document.getElementById('consentTitle').value.trim():'', detail: document.getElementById('consentDetail')?document.getElementById('consentDetail').value.trim():'', denom: document.getElementById('consentDenom')?Number(document.getElementById('consentDenom').value):null, expires: document.getElementById('consentExpire')?document.getElementById('consentExpire').value:'', preset: document.getElementById('presetSel')?document.getElementById('presetSel').value:null, freePct: document.getElementById('freePct')?Number(document.getElementById('freePct').value):null, voterRole: document.getElementById('freeVoterRole')?document.getElementById('freeVoterRole').value:null }); }catch(e){} }); }
+      var freeVoterRoleEl=document.getElementById('freeVoterRole');
+      if(freeVoterRoleEl){ freeVoterRoleEl.addEventListener('change', function(){ try{ saveLocalDraft('composer:consent', { title: document.getElementById('consentTitle')?document.getElementById('consentTitle').value.trim():'', detail: document.getElementById('consentDetail')?document.getElementById('consentDetail').value.trim():'', denom: document.getElementById('consentDenom')?Number(document.getElementById('consentDenom').value):null, expires: document.getElementById('consentExpire')?document.getElementById('consentExpire').value:'', preset: document.getElementById('presetSel')?document.getElementById('presetSel').value:null, freePct: document.getElementById('freePct')?Number(document.getElementById('freePct').value):null, voterRole: document.getElementById('freeVoterRole')?document.getElementById('freeVoterRole').value:null }); }catch(e){} }); }
+    }catch(e){console.error('composer draft bind failed',e);}
+    
+    // ← 커서 초기화 방지: 저장된 form 값 복원
+    setTimeout(function(){
+      try{
+        Object.keys(savedFormValues).forEach(function(id){
+          var el=document.getElementById(id);
+          if(el && savedFormValues[id]!==''){
+            if(el.type==='checkbox') el.checked=savedFormValues[id];
+            else el.value=savedFormValues[id];
+          }
+        });
+      }catch(e){}
+    },50);
+  })();
+}
+
+/* =====================================================
+   TAB: 승인·이의제기
+===================================================== */
+function renderApproveTab(){
+  var box=document.getElementById('tabContent');
+  var aps=appState.approvals;
+  var pending=aps.filter(function(a){return a.status==='pending';});
+  var objected=aps.filter(function(a){return a.status==='objected';});
+var done=aps.filter(function(a){
+  return a.status==='approved'
+      || a.status==='rejected'
+      || a.status==='rejected_final';
+});
+
+  var html='';
+
+  // ==================== 섹션 1: 출제자 - 정답 승인, 답변 승인 ====================
+  if(isQuestioner()){
+    // try restore draft type first so UI reflects user's last selection across refreshes
+    var dap = null;
+    try{ dap = loadLocalDraft('composer:approval'); }catch(e){}
+    var defaultAType = (appState.approvalComposeType) || (dap && dap.atype) || 'correct';
+    html+='<section><div class="section-label"><span class="no mono">제출</span><span class="name">승인 요청</span></div>'+
+      '<div class="card" id="approvalComposer">'+
+        '<div class="tabs" id="approvalTypeTabs">'+
+          '<button class="tab-btn" data-atype="correct">정답 승인</button>'+
+          '<button class="tab-btn" data-atype="answer">답변 승인</button>'+
+        '</div>'+
+        '<div class="field"><label for="apTitle">제목</label><input type="text" id="apTitle" placeholder="예: 1번 질문 답변"/></div>'+
+        '<div class="field"><label for="apBody">내용</label><textarea id="apBody" placeholder="정답 또는 답변 내용을 입력하세요..."></textarea></div>'+
+        '<button id="submitApproval" type="button" class="btn btn-primary">승인 요청 제출</button>'+
+      '</div></section>';
+    // store chosen type to appState so re-renders keep it
+    appState.approvalComposeType = defaultAType;
+  }
+
+  // ==================== 섹션 2: 참가자 - 정답 제출 합의 (Phase 1) ====================
+  if(isPlayer()){
+    html+='<section><div class="section-label"><span class="no mono">제출</span><span class="name">정답 제출 합의</span></div>'+
+      '<div class="card" id="answerSubmitComposer">'+
+        '<div class="hint" style="margin-bottom:10px;">🎯 참가자들이 함께 정답을 제시합니다. (전체 참가자의 5분의 4 이상 찬성 필요)</div>'+
+        '<div class="field"><label for="asBody">정답</label><textarea id="asBody" placeholder="최종 정답을 입력하세요..."></textarea></div>'+
+        '<button id="submitAnswerProposal" type="button" class="btn btn-primary">정답 제출</button>'+
+      '</div></section>';
+  }
+
+  // ==================== 섹션 3: 평가자 - 정답 평가 (Phase 2) ====================
+  if(isJudge()){
+    html+='<section><div class="section-label"><span class="no mono">제출</span><span class="name">정답 평가</span></div>'+
+      '<div class="hint" style="margin-bottom:10px;">📊 참가자들이 제출한 정답을 5개 항목으로 평가합니다.</div>'+
+      '<div class="card" id="answerEvalComposer" style="display:none;">'+
+        '<p style="font-size:12px;color:var(--text-soft);">평가 대상 정답이 없습니다. 참가자들이 정답을 제출한 후 평가를 진행하세요.</p>'+
+      '</div></section>';
+  }
+
+  // 참가자: 질문 합의 후 질문 제출 (단, 여기서는 approve 탭이므로 간략 안내)
+  // 이의제기 현황
+  if(objected.length>0){
+    html+='<section><div class="section-label"><span class="no mono">이의</span><span class="name">이의제기 검토 중</span></div>';
+    html+=objected.map(function(a){return renderApprovalItem(a);}).join('');
+    html+='</section>';
+  }
+
+  // 대기 중
+  // ⚠ 이전에는 이 섹션 전체가 참가자에게 숨겨져 있어, 참가자 본인이 제출한 '정답 제출 합의' 카드도
+  // 본인에게 보이지 않아 투표 자체가 불가능한 치명적 버그가 있었음.
+  // 비밀이 필요한 항목(정답/답변 승인 등)은 renderApprovalItem 내부에서 본문을 이미 비공개 처리하므로
+  // 목록 자체는 모든 역할에 노출해도 안전함 — 그대로 노출하도록 수정.
+  {
+
+  html+='<section><div class="section-label"><span class="no mono">대기</span><span class="name">승인 대기 ('+pending.length+'건)</span></div>';
+
+  if(pending.length===0){
+    html+='<div class="card empty">대기 중인 승인 요청이 없습니다.</div>';
+  }else{
+    html+=pending.map(function(a){
+      return renderApprovalItem(a);
+    }).join('');
+  }
+
+  html+='</section>';
+
+}
+
+  // 완료
+  if(done.length>0){
+    html+='<section><div class="section-label"><span class="no mono">완료</span><span class="name">처리 완료</span></div>';
+    html+=done.slice(0,5).map(function(a){return renderApprovalItem(a,true);}).join('');
+    html+='</section>';
+  }
+
+  box.innerHTML=html;
+
+  // 출제자 제출 폼 이벤트
+  if(isQuestioner()){
+    var currentAType = appState.approvalComposeType || 'correct';
+    box.querySelectorAll('#approvalTypeTabs .tab-btn').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        currentAType=btn.getAttribute('data-atype');
+        box.querySelectorAll('#approvalTypeTabs .tab-btn').forEach(function(b){b.classList.remove('active');});
+        btn.classList.add('active');
+        // persist selection across re-renders and save into draft
+        try{ appState.approvalComposeType = currentAType; }catch(e){}
+        try{ var t = document.getElementById('apTitle')?document.getElementById('apTitle').value.trim():''; var bdy = document.getElementById('apBody')?document.getElementById('apBody').value.trim():''; saveLocalDraft('composer:approval',{title:t, body:bdy, atype:currentAType}); }catch(e){}
+      });
+    });
+    // ensure correct tab shows active state after render
+    box.querySelectorAll('#approvalTypeTabs .tab-btn').forEach(function(b){ if(b.getAttribute('data-atype')===currentAType) b.classList.add('active'); else b.classList.remove('active'); });
+    var submitAp=document.getElementById('submitApproval');
+    // restore draft
+    try{var dap=loadLocalDraft('composer:approval'); if(dap){ if(document.getElementById('apTitle')) document.getElementById('apTitle').value=dap.title||''; if(document.getElementById('apBody')) document.getElementById('apBody').value=dap.body||''; if(dap.atype){ try{ appState.approvalComposeType = dap.atype; }catch(e){} } }}catch(e){}
+    if(document.getElementById('apTitle')) document.getElementById('apTitle').addEventListener('input',function(){ try{ saveLocalDraft('composer:approval',{title:document.getElementById('apTitle')?document.getElementById('apTitle').value.trim():'', body:document.getElementById('apBody')?document.getElementById('apBody').value.trim():'', atype:currentAType}); }catch(e){} });
+    if(document.getElementById('apBody')) document.getElementById('apBody').addEventListener('input',function(){ try{ saveLocalDraft('composer:approval',{title:document.getElementById('apTitle')?document.getElementById('apTitle').value.trim():'', body:document.getElementById('apBody')?document.getElementById('apBody').value.trim():'', atype:currentAType}); }catch(e){} });
+    if(submitAp) submitAp.addEventListener('click',async function(){
+      var title=document.getElementById('apTitle').value.trim();
+      var body=document.getElementById('apBody').value.trim();
+      if(!title||!body){alert('제목과 내용을 모두 입력하세요.');return;}
+      await createApprovalWithLog({type:currentAType,title:title,body:body,authorId:currentUser.id,authorName:currentUser.name});
+      try{clearLocalDraft('composer:approval');}catch(e){}
+      document.getElementById('apTitle').value='';
+      document.getElementById('apBody').value='';
+      await refreshAll(true);
+    });
+  }
+
+  // 참가자 정답 제출 폼 이벤트
+  if(isPlayer()){
+    var submitAnswerProposal = document.getElementById('submitAnswerProposal');
+    // draft 복원
+    try{var dasb=loadLocalDraft('composer:answerSubmit'); if(dasb && document.getElementById('asBody')) document.getElementById('asBody').value=dasb.body||'';}catch(e){}
+    if(document.getElementById('asBody')) document.getElementById('asBody').addEventListener('input',function(){ try{ saveLocalDraft('composer:answerSubmit',{body:document.getElementById('asBody')?document.getElementById('asBody').value.trim():''}); }catch(e){} });
+    if(submitAnswerProposal) submitAnswerProposal.addEventListener('click',async function(){
+      var answerText = document.getElementById('asBody').value.trim();
+      if(!answerText){alert('정답을 입력하세요.');return;}
+      await createApprovalWithLog({
+        type:'answerSubmit',
+        title:'정답 제출',
+        answerText:answerText,
+        authorId:currentUser.id,
+        authorName:currentUser.name,
+        votes:{},
+        body:answerText
+      });
+      try{clearLocalDraft('composer:answerSubmit');}catch(e){}
+      document.getElementById('asBody').value='';
+      await refreshAll(true);
+    });
+  }
+
+  // 평가자: 승인/거부 버튼
+  attachApprovalEvents(box,aps);
+}
+
+function renderApprovalItem(a, compact){
+  var statusLabel={pending:'검토 대기',approved:'승인',rejected:'거부',objected:'이의제기 중',rejected_final:'최종 거부'};
+  var statusClass={pending:'pending',approved:'approved',rejected:'rejected',objected:'objected',rejected_final:'rejected'};
+  var typeLabel=ATYPE_LABEL[a.type]||a.type;
+  var html='<div class="approval-item" data-id="'+escapeHtml(a.id)+'" data-status="'+escapeHtml(a.status)+'">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'+
+      '<span class="a-type">'+escapeHtml(typeLabel)+'</span>'+
+      '<span class="status-pill '+statusClass[a.status]+'">'+escapeHtml(statusLabel[a.status]||a.status)+'</span>'+
+    '</div>'+
+    '<div class="a-title">'+escapeHtml(a.title)+'</div>'+
+    '<div class="a-meta">제출: '+escapeHtml(a.authorName||'?')+' · '+timeAgo(a.createdAt)+'</div>';
+  '</div>';
+    
+
+if(!compact){
+
+  // ==================== Phase 1: answerSubmit - 참가자 정답 제출 투표 ====================
+  if(a.type === 'answerSubmit'){
+    html+='<div class="a-body" style="font-weight:600;margin-bottom:10px;">📝 제출 정답</div>'+
+      '<div style="padding:10px;background:rgba(100,150,200,0.1);border-radius:6px;margin-bottom:10px;font-size:14px;line-height:1.5;">'+
+      escapeHtml(a.answerText)+
+      '</div>';
+    
+    // 투표 통계
+    a.votes = a.votes || {};
+    var voteKeys = Object.keys(a.votes);
+    var yesCount = voteKeys.filter(function(k){return a.votes[k]===true;}).length;
+    var noCount = voteKeys.filter(function(k){return a.votes[k]===false;}).length;
+    var totalPlayers = appState.roster.filter(function(r){return r.role==='참가자';}).length;
+    var requiredVotes = Math.ceil(totalPlayers * 4 / 5); // 5분의 4
+    var passedThreshold = yesCount >= requiredVotes;
+    
+    html+='<div style="font-size:12px;margin-bottom:8px;">'+
+      '<span style="color:var(--text-success);">✅ 찬성: '+yesCount+'</span> / '+
+      '<span style="color:var(--text-danger);">❌ 반대: '+noCount+'</span> / '+
+      '<span>필요: '+requiredVotes+'명</span>'+
+    '</div>';
+    
+    html+='<div style="width:100%;height:20px;background:#e0e0e0;border-radius:4px;overflow:hidden;margin-bottom:8px;">'+
+      '<div style="height:100%;background:'+(passedThreshold?'#4CAF50':'#f44336')+';width:'+Math.min(100,Math.round(yesCount/requiredVotes*100))+'%;transition:width 0.3s;"></div>'+
+    '</div>';
+    
+    // 참가자만 투표 가능 (단, 합의가 이미 종료된 의안은 추가 투표를 받지 않음 — 중복 평가 생성 방지)
+    if(isPlayer()){
+      var myVote = a.votes[currentUser.id];
+      if(a.status!=='pending'){
+        html+='<div style="padding:8px;background:rgba(0,0,0,0.05);border-radius:6px;font-size:12px;">'+
+          '✅ 합의가 종료되어 평가 단계로 넘어갔습니다.'+
+          (myVote!==undefined?(myVote?' (귀하: 찬성)':' (귀하: 반대)'):'')+
+        '</div>';
+      } else if(myVote === undefined){
+        html+='<div style="display:flex;gap:8px;margin-bottom:10px;">'+
+          '<button class="btn btn-sm btn-approve as-vote" data-id="'+escapeHtml(a.id)+'" data-vote="yes">✅ 찬성</button>'+
+          '<button class="btn btn-sm btn-reject as-vote" data-id="'+escapeHtml(a.id)+'" data-vote="no">❌ 반대</button>'+
+        '</div>';
+      }else{
+        html+='<div style="padding:8px;background:rgba(0,0,0,0.05);border-radius:6px;font-size:12px;">'+
+          (myVote?'✅ 찬성으로 투표했습니다':'❌ 반대로 투표했습니다')+
+        '</div>';
+      }
+    }
+  }
+  
+  // ==================== Phase 2: answerEval - 평가자 정답 평가 ====================
+  else if(a.type === 'answerEval'){
+    html+='<div class="a-body" style="font-weight:600;margin-bottom:10px;">📝 평가 대상 정답</div>'+
+      '<div style="padding:10px;background:rgba(100,150,200,0.1);border-radius:6px;margin-bottom:10px;font-size:14px;line-height:1.5;">'+
+      escapeHtml(a.answerText)+
+      '</div>';
+    
+    a.scores = a.scores || {};
+    var judges = appState.roster.filter(function(r){return r.role==='평가자';});
+    var judgesEvaluated = Object.keys(a.scores).length;
+    var totalJudges = judges.length;
+    
+    // 평가자만 평가 가능
+    if(isJudge() && a.status==='pending'){
+      var myScores = a.scores[currentUser.id];
+      if(!myScores){
+        html+='<div style="margin-bottom:12px;"><div style="font-weight:600;margin-bottom:8px;">📊 평가 항목 (각 항목 0-10점)</div>';
+        CATS.forEach(function(cat){
+          html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'+
+            '<label style="width:70px;font-size:12.5px;">'+escapeHtml(cat.label)+'</label>'+
+            '<input type="number" class="ae-score" id="score_'+escapeHtml(a.id)+'_'+escapeHtml(cat.key)+'" min="0" max="10" value="5" style="width:50px;"/>'+
+            '<span style="font-size:11px;color:var(--text-soft);">점</span>'+
+          '</div>';
+        });
+        // ⚠ 누락되어 있던 평가 제출 버튼 추가 (기존에는 이 버튼이 없어 평가자가 점수를 확정 제출할 방법이 없었음)
+        html+='<button type="button" class="btn btn-primary btn-sm ae-submit" data-id="'+escapeHtml(a.id)+'">평가 제출</button>';
+        html+='</div>';
+      }else{
+        html+='<div style="margin-bottom:12px;"><div style="font-weight:600;margin-bottom:8px;">✅ 귀하의 평가 완료</div>';
+        CATS.forEach(function(cat){
+          var score = myScores[cat.key] || 0;
+          html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;font-size:12px;">'+
+            '<span style="width:70px;">'+escapeHtml(cat.label)+':</span>'+
+            '<span style="font-weight:600;color:var(--gold);">'+score+'점</span>'+
+          '</div>';
+        });
+        html+='</div>';
+      }
+    }
+    
+    // 평가 진행률 표시
+    if(totalJudges > 0){
+      html+='<div style="font-size:12px;margin-bottom:8px;">평가 진행: '+judgesEvaluated+' / '+totalJudges+' 평가자</div>';
+      html+='<div style="width:100%;height:16px;background:#e0e0e0;border-radius:4px;overflow:hidden;margin-bottom:10px;">'+
+        '<div style="height:100%;background:#2196F3;width:'+(totalJudges>0?Math.round(judgesEvaluated/totalJudges*100):0)+'%;transition:width 0.3s;"></div>'+
+      '</div>';
+    }
+    
+    // ==================== 평가 결과 공개 (status==='approved' 또는 모든 평가 완료) ====================
+    var shouldShowResults = a.status==='approved' || (judgesEvaluated === totalJudges && totalJudges > 0);
+    
+    if(shouldShowResults && totalJudges > 0){
+      var allScores = {};
+      CATS.forEach(function(cat){allScores[cat.key]=[];});
+      Object.keys(a.scores).forEach(function(jid){
+        CATS.forEach(function(cat){
+          if(a.scores[jid][cat.key] !== undefined){
+            allScores[cat.key].push(a.scores[jid][cat.key]);
+          }
+        });
+      });
+      
+      var averages = {};
+      var allPassed = true;
+      CATS.forEach(function(cat){
+        var scores = allScores[cat.key];
+        averages[cat.key] = scores.length>0?scores.reduce(function(a,b){return a+b;})/scores.length:0;
+        if(averages[cat.key] <= 6 && cat.key !== 'sim'){allPassed=false;}
+        if(cat.key === 'sim' && averages[cat.key] < 7){allPassed=false;}
+      });
+      
+      var avgAll = Object.keys(averages).reduce(function(a,k){return a+averages[k];},0)/CATS.length;
+      if(avgAll <= 8){allPassed=false;}
+      
+      // ==================== 최종 판정 결과 표시 ====================
+      var consensus = a.consensus || {passed: allPassed, percentage: '계산 중'};
+      var isCorrect = consensus.passed;
+      
+      html+='<div style="margin-top:12px;padding:12px;background:'+(isCorrect?'rgba(46,108,94,0.15)':'rgba(162,58,44,0.15)')+';border-radius:6px;border-left:4px solid '+(isCorrect?'#7dd9c8':'#ff9999')+';"><div style="font-weight:600;margin-bottom:10px;font-size:14px;color:'+(isCorrect?'#2d7d6e':'#b43929')+';">'+(isCorrect?'✅ 정답 승인':'❌ 정답 불가')+'</div>';
+      
+      html+='<div style="margin-bottom:8px;font-size:12px;">'+
+        '<span style="font-weight:600;">평가 결과:</span><br/>';
+      
+      CATS.forEach(function(cat){
+        var score = averages[cat.key];
+        var status = (cat.key === 'sim' ? score >= 7 : score > 6) ? '✅' : '⚠️';
+        html+='<div style="margin-top:4px;">'+status+' '+escapeHtml(cat.label)+': <span style="font-weight:600;color:var(--gold);">'+score.toFixed(1)+'점</span></div>';
+      });
+      
+      html+='<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,0.1);"><span style="font-weight:600;">평균:</span> <span style="color:var(--gold);font-weight:600;">'+avgAll.toFixed(1)+'점</span> / <span style="font-size:11px;color:var(--text-soft);">평가자 '+totalJudges+'명</span></div>';
+      
+      if(consensus.passed !== undefined && consensus.totalCount !== undefined){
+        html+='<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,0.1);font-size:12px;"><span style="font-weight:600;">합의율:</span> '+consensus.approvedCount+' / '+consensus.totalCount+' 평가자 ('+consensus.percentage+'%)</div>';
+      }
+      
+      html+='</div>';
+    }
+    
+    // ==================== Phase 2: 오답 피드백 (오답 상태일 때) ====================
+    if(a.type === 'answerEval' && a.status !== 'pending'){
+      var consensus = a.consensus || {};
+      if(consensus && !consensus.passed){
+        html+='<div style="margin-top:12px;border-top:1px solid rgba(0,0,0,0.1);padding-top:12px;">';
+        
+        // 평가자 피드백 입력
+        if(isJudge() && a.scores && a.scores[currentUser.id]){
+          a.feedbacks = a.feedbacks || {};
+          var myFeedback = a.feedbacks[currentUser.id];
+          
+          if(!myFeedback){
+            html+='<div style="margin-bottom:12px;"><div style="font-weight:600;margin-bottom:8px;">💡 피드백 추가</div>'+
+              '<textarea class="feedback-text" id="feedback_'+escapeHtml(a.id)+'" style="min-height:80px;width:100%;" placeholder="개선 의견이나 조언을 작성해주세요..."></textarea>'+
+              '<button class="btn btn-secondary btn-sm submit-feedback" data-id="'+escapeHtml(a.id)+'" style="margin-top:8px;">피드백 제출</button>'+
+            '</div>';
+          }else{
+            html+='<div style="margin-bottom:12px;padding:8px;background:rgba(0,0,0,0.05);border-radius:6px;font-size:12px;">'+
+              '<span style="font-weight:600;">귀하의 피드백:</span><br/>'+
+              escapeHtml(myFeedback)+
+            '</div>';
+          }
+        }
+        
+        // 피드백 목록 표시
+        a.feedbacks = a.feedbacks || {};
+        var feedbackKeys = Object.keys(a.feedbacks);
+        if(feedbackKeys.length > 0){
+          html+='<div style="margin-top:12px;border-top:1px solid rgba(0,0,0,0.1);padding-top:12px;"><div style="font-weight:600;margin-bottom:8px;">📝 평가자 피드백</div>';
+          feedbackKeys.forEach(function(jid){
+            var judge = appState.roster.find(function(r){return r.id===jid;});
+            var judgeName = judge?judge.name:'평가자';
+            html+='<div style="margin-bottom:8px;padding:8px;background:rgba(100,150,200,0.1);border-radius:6px;border-left:3px solid #4CAF50;">'+
+              '<div style="font-weight:600;font-size:12px;color:var(--text-soft);margin-bottom:4px;">'+escapeHtml(judgeName)+' (평가자)</div>'+
+              '<div style="font-size:13px;line-height:1.4;">'+escapeHtml(a.feedbacks[jid])+'</div>'+
+            '</div>';
+          });
+          html+='</div>';
+        }
+        
+        html+='</div>';
+      }
+    }
+  }
+  
+  // ==================== Phase 3 이상: 기존 approval 렌더링 ====================
+  else{
+    if(a.status === 'pending'){
+      if(isQuestioner() || isJudge() || isChief()){
+        html+='<div class="a-body">'+escapeHtml(a.body)+'</div>';
+      }else{
+        html+='<div class="a-body">🔒 승인 전 비공개</div>';
+      }
+    }else{
+      html+='<div class="a-body">'+escapeHtml(a.body)+'</div>';
+    }
+}
+
+  // 거부 사유 표시
+  if(a.rejectReason){
+    html+='<div class="a-reason">⛔ 거부 사유: '+escapeHtml(a.rejectReason)+'</div>';
+  }
+  // 이의제기 내용 표시
+  if(a.objectionBody){
+    html+='<div class="a-objection">⚖ 이의제기 ('+escapeHtml(a.objectorName||'?')+'): '+escapeHtml(a.objectionBody)+'</div>';
+  }
+  // 이의 검토자 의견 (원심 평가자)
+  if(a.objectionOpinion){
+    html+='<div class="a-reason violet">📋 원심 의견: '+escapeHtml(a.objectionOpinion)+'</div>';
+  }
+  // ← 이의제기 인용 사유 표시
+  if(a.objectionAcceptReason){
+    html+='<div class="a-reason green">✅ 이의 인용 사유: '+escapeHtml(a.objectionAcceptReason)+'</div>';
+  }
+  // ← 이의제기 기각 사유 표시
+  if(a.objectionDenyReason){
+    html+='<div class="a-reason">❌ 이의 기각 사유: '+escapeHtml(a.objectionDenyReason)+'</div>';
+  }
+
+
+    if(a.status==='pending'){
+      // ⚠ 승인 권한 제한: 시행령 제4조의4①·제4조의5①에 따라 출제자가 제출한 정답/답변은
+      // 반드시 '평가자'의 검토·승인을 받아야 하며, 제출자인 출제자 본인이 스스로 승인/거부할 수 없다.
+      if(isJudge()){
+        html+='<div class="btn-row" style="margin-top:10px;">'+
+          '<button class="btn btn-approve btn-sm ap-approve" data-id="'+escapeHtml(a.id)+'">승인</button>'+
+          '<button class="btn btn-reject btn-sm ap-reject" data-id="'+escapeHtml(a.id)+'">거부</button>'+
+        '</div>';
+      } else if(isQuestioner() && a.authorId===currentUser.id){
+        html+='<div class="hint" style="margin-top:10px;color:var(--text-soft);">⏳ 평가자의 검토·승인 대기 중입니다. (본인 제출 항목은 직접 승인할 수 없습니다)</div>';
+      }
+    }
+    if(a.status==='objected'){
+      // 이의제기 검토: 원심 평가자는 의견 제시, 나머지 평가자는 인용 여부 결정
+      // ⚠ 승인 권한 제한: 이의제기 인용/기각 결정 역시 '평가자'의 권한이며, 출제자는 결정할 수 없다.
+      var isOriginalJudge=a.reviewedBy===currentUser.id;
+      if(isOriginalJudge&&!a.objectionOpinion){
+        html+='<div style="margin-top:8px;" id="opinionBox_'+escapeHtml(a.id)+'">'+
+          '<div class="field"><label>원심 의견 제시 (선택)</label><textarea class="opinion-text" id="opinion_'+escapeHtml(a.id)+'" style="min-height:60px;" placeholder="이의제기에 대한 의견을 입력하세요..."></textarea></div>'+
+          '<button class="btn btn-secondary btn-sm submit-opinion" data-id="'+escapeHtml(a.id)+'">의견 제출</button>'+
+        '</div>';
+      } else if(!isOriginalJudge && isJudge()){
+        html+='<div class="btn-row" style="margin-top:10px;">'+
+          '<button class="btn btn-approve btn-sm obj-accept" data-id="'+escapeHtml(a.id)+'">이의 인용 (원심 파기)</button>'+
+          '<button class="btn btn-reject btn-sm obj-deny" data-id="'+escapeHtml(a.id)+'">이의 기각 (원심 유지)</button>'+
+        '</div>';
+      } else if(!isJudge()){
+        html+='<div class="hint" style="margin-top:10px;color:var(--text-soft);">⏳ 나머지 평가자의 이의제기 검토 대기 중입니다.</div>';
+      }
+    }
+  }
+
+  // 출제자: 거부된 경우 이의제기 또는 재제출
+  if(isQuestioner() && a.status==='rejected'){
+    html+='<div style="margin-top:8px;">'+
+      '<div class="field"><label>이의제기 사유</label><textarea class="objection-text" id="objection_'+escapeHtml(a.id)+'" style="min-height:60px;" placeholder="이의제기 사유를 명시하세요..."></textarea></div>'+
+      '<div class="btn-row">'+
+        '<button class="btn btn-secondary btn-sm raise-objection" data-id="'+escapeHtml(a.id)+'">이의제기 제출</button>'+
+      '</div>'+
+    '</div>';
+  }
+
+  // 이의제기 인용 후: 출제자에게 통보 (환송 상태 표시)
+  if(a.status==='approved'&&a.objectionAccepted){
+    html+='<div class="notify-banner">✅ 이의제기가 인용되어 재승인 처리되었습니다.</div>';
+  }
+
+  // 승인된 항목에 대해 출제자가 승인의 이유를 작성할 수 있도록 함
+  if(a.status==='approved' && a.authorId===currentUser.id && !a.approvalReason){
+    html+='<div style="margin-top:8px;">'+
+      '<div class="field"><label>승인 이유 작성 (출제자)</label><textarea class="author-reason" id="reason_'+escapeHtml(a.id)+'" style="min-height:60px;" placeholder="승인된 답변/정답에 대한 설명을 입력하세요..."></textarea></div>'+
+      '<button class="btn btn-primary btn-sm submit-author-reason" data-id="'+escapeHtml(a.id)+'">승인 이유 제출</button>'+
+    '</div>';
+  }
+
+  // 평가장: 재량으로 즉시 승인/기각할 수 있는 버튼
+  if(isChief() && a.status==='pending'){
+    html+='<div class="btn-row" style="margin-top:10px;">'+
+      '<button class="btn btn-approve btn-sm chief-approve" data-id="'+escapeHtml(a.id)+'">재량으로 승인</button>'+
+      '<button class="btn btn-reject btn-sm chief-reject" data-id="'+escapeHtml(a.id)+'">재량으로 기각</button>'+
+    '</div>';
+  }
+
+  html+='</div>';
+  return html;
+}
+
+function attachApprovalEvents(box, aps){
+  // 평가자: 승인 버튼
+  box.querySelectorAll('.ap-approve').forEach(function(btn){
+    btn.addEventListener('click',async function(){
+      // ⚠ 방어적 권한 검사: 평가자만 승인 가능 (출제자의 자기 승인 방지)
+      if(!isJudge()){alert('승인 권한은 평가자에게만 있습니다.');return;}
+      var id=btn.getAttribute('data-id');
+      var ap=aps.find(function(a){return a.id===id;});if(!ap)return;
+      
+      // ==================== Phase 2: answerEval 점수 저장 ====================
+      if(ap.type==='answerEval' && isJudge()){
+        try{
+          ap.scores = ap.scores || {};
+          ap.scores[currentUser.id] = {};
+          CATS.forEach(function(cat){
+            var scoreEl = document.getElementById('score_'+ap.id+'_'+cat.key);
+            if(scoreEl){
+              ap.scores[currentUser.id][cat.key] = Number(scoreEl.value) || 0;
+            }
+          });
+          
+          // 모든 평가자 평가 완료 여부 확인
+          var judges = appState.roster.filter(function(r){return r.role==='평가자';});
+          var judgesEvaluated = Object.keys(ap.scores).length;
+          var totalJudges = judges.length;
+          
+          // 모든 평가자 평가 완료 시 60% 합의 계산
+          if(judgesEvaluated === totalJudges && totalJudges > 0){
+            var allScores = {};
+            CATS.forEach(function(cat){allScores[cat.key]=[];});
+            Object.keys(ap.scores).forEach(function(jid){
+              CATS.forEach(function(cat){
+                if(ap.scores[jid][cat.key] !== undefined){
+                  allScores[cat.key].push(ap.scores[jid][cat.key]);
+                }
+              });
+            });
+            
+            var averages = {};
+            CATS.forEach(function(cat){
+              var scores = allScores[cat.key];
+              averages[cat.key] = scores.length>0?scores.reduce(function(a,b){return a+b;})/scores.length:0;
+            });
+            
+            var avgAll = Object.keys(averages).reduce(function(a,k){return a+averages[k];},0)/CATS.length;
+            var sim = averages['sim']||0;
+            
+            // 정답 기준: 모든 항목 6점 초과, 평균 8점 초과, 유사성 7점 이상
+            var passed = (sim >= 7) && (avgAll > 8);
+            
+            // 평가자별 기준 충족 여부 계산 (60% 이상 필요)
+            var judgesApproved = 0;
+            Object.keys(ap.scores).forEach(function(jid){
+              var jScores = ap.scores[jid];
+              var jAverages = {};
+              CATS.forEach(function(cat){
+                jAverages[cat.key] = jScores[cat.key] || 0;
+              });
+              var jAvgAll = Object.keys(jAverages).reduce(function(a,k){return a+jAverages[k];},0)/CATS.length;
+              var jSim = jAverages['sim']||0;
+              if((jSim >= 7) && (jAvgAll > 8)){
+                judgesApproved++;
+              }
+            });
+            
+            var consensusPercentage = (judgesApproved / totalJudges * 100).toFixed(2);
+            var consensusPassed = judgesApproved >= Math.ceil(totalJudges * 0.6); // 60% 이상
+            
+            ap.consensus = {
+              approvedCount: judgesApproved,
+              totalCount: totalJudges,
+              percentage: consensusPercentage,
+              passed: consensusPassed,
+              finalResult: consensusPassed ? 'correct' : 'incorrect'
+            };
+          }
+          
+          // 점수 draft 삭제
+          try{ clearLocalDraft('approval:scores:'+ap.id); }catch(e){}
+        }catch(e){console.error('score save failed', e);}
+      }
+      
+      ap.status='approved';ap.reviewedBy=currentUser.id;ap.reviewedAt=Date.now();
+      await saveApproval(ap);
+      
+      // ← 질문 완료: type이 'answer'이면 관련 질문을 'answered' 상태로 업데이트
+      if(ap.type==='answer' && ap.relatedQuestionId){
+        try{
+          var qs=await fetchQuestions();
+          var q=qs.find(function(x){return x.id===ap.relatedQuestionId;});
+          if(q){
+            q.answer=ap.proposedAnswer||ap.body;
+            q.status='answered';
+            q.answerApprovedAt=Date.now();
+            await saveQuestions(qs);
+          }
+        }catch(e){console.error('question complete failed',e);}
+      }
+      
+      // ← 질문 반려 승인: type이 'questionReject'이면 관련 질문을 'rejected' 상태로 업데이트
+      if(ap.type==='questionReject' && ap.relatedQuestionId){
+        try{
+          var qs=await fetchQuestions();
+          var q=qs.find(function(x){return x.id===ap.relatedQuestionId;});
+          if(q){
+            q.status='rejected';
+            q.rejectedBy=ap.authorName;
+            q.rejectedAt=ap.approvedAt||Date.now();
+            await saveQuestions(qs);
+          }
+        }catch(e){console.error('question reject failed',e);}
+      }
+      
+      await refreshAll(true);
+    });
+  });
+  // 평가자: 거부 버튼
+  box.querySelectorAll('.ap-reject').forEach(function(btn){
+    btn.addEventListener('click',async function(){
+      // ⚠ 방어적 권한 검사: 평가자만 거부 가능 (출제자의 자기 거부 방지)
+      if(!isJudge()){alert('거부 권한은 평가자에게만 있습니다.');return;}
+      var id=btn.getAttribute('data-id');
+      var reason=prompt('거부 사유를 입력하세요 (출제자에게 전달됩니다):');
+      if(reason===null)return;
+      var ap=aps.find(function(a){return a.id===id;});if(!ap)return;
+      ap.status='rejected';ap.rejectReason=reason||'(사유 없음)';ap.reviewedBy=currentUser.id;ap.reviewedAt=Date.now();
+      await saveApproval(ap);
+      
+      // ← 질문 반려 거부: type이 'questionReject'이면 질문을 pending으로 복원
+      if(ap.type==='questionReject' && ap.relatedQuestionId){
+        try{
+          var qs=await fetchQuestions();
+          var q=qs.find(function(x){return x.id===ap.relatedQuestionId;});
+          if(q && q.status==='pending'){
+            q.rejectedBy=null;
+            q.rejectedAt=null;
+            await saveQuestions(qs);
+          }
+        }catch(e){console.error('question reject revert failed',e);}
+      }
+      
+      await refreshAll(true);
+    });
+  });
+  // 출제자: 이의제기
+  box.querySelectorAll('.raise-objection').forEach(function(btn){
+    btn.addEventListener('click',async function(){
+      var id=btn.getAttribute('data-id');
+      var text=document.getElementById('objection_'+id);
+      var body=text?text.value.trim():'';
+      if(!body){alert('이의제기 사유를 입력하세요.');return;}
+      var ap=aps.find(function(a){return a.id===id;});if(!ap)return;
+      ap.status='objected';ap.objectionBody=body;ap.objectorId=currentUser.id;ap.objectorName=currentUser.name;ap.objectedAt=Date.now();
+      await saveApproval(ap);
+
+      // 이의제기 사실을 평가자들에게 알리는 공지 생성
+      await createApprovalWithLog({
+        type:'question', // 공지용 (알림)
+        title:'[이의제기 통보] '+ap.title,
+        body:'출제자 '+escapeHtml(currentUser.name)+'이(가) 이의를 제기했습니다.\n\n이의 사유: '+body,
+        authorId:currentUser.id,authorName:currentUser.name,isNotice:true,relatedId:id
+      });
+      await saveAudit('objection_raised',{approvalId:ap.id,objector:currentUser?currentUser.id:null});
+      await refreshAll(true);
+    });
+  });
+  // 평가자: 원심 의견 제출
+  box.querySelectorAll('.submit-opinion').forEach(function(btn){
+    btn.addEventListener('click',async function(){
+      var id=btn.getAttribute('data-id');
+      var text=document.getElementById('opinion_'+id);
+      var body=text?text.value.trim():'';
+      if(!body){alert('의견을 입력하세요.');return;}
+      var ap=aps.find(function(a){return a.id===id;});if(!ap)return;
+      ap.objectionOpinion=body;ap.opinionSubmittedAt=Date.now();
+      await saveApproval(ap);await refreshAll(true);
+    });
+  });
+  // 평가자: 이의 인용
+  box.querySelectorAll('.obj-accept').forEach(function(btn){
+    btn.addEventListener('click',async function(){
+      // ⚠ 방어적 권한 검사: 이의 인용 여부 결정은 평가자만 가능
+      if(!isJudge()){alert('이의제기 인용 여부 결정 권한은 평가자에게만 있습니다.');return;}
+      var id=btn.getAttribute('data-id');
+      var ap=aps.find(function(a){return a.id===id;});if(!ap)return;
+      var reason=prompt('이의 인용(원심 파기) 사유를 입력하세요:');
+      if(reason===null||!reason.trim()){alert('인용 사유는 필수입니다.');return;}
+      // 원심 파기 → 환송 (pending으로 되돌림, 인용 표시)
+      ap.status='pending';ap.objectionAccepted=true;ap.objectionAcceptReason=reason.trim();ap.rejectReason=null;ap.objectionBody=null;ap.objectionOpinion=null;ap.reviewedBy=null;ap.objectedAt=Date.now();
+      await saveApproval(ap);await saveAudit('objection_accepted',{approvalId:ap.id,by:currentUser?currentUser.id:null,reason:ap.objectionAcceptReason});await refreshAll(true);
+    });
+  });
+  // 평가자: 이의 기각
+  box.querySelectorAll('.obj-deny').forEach(function(btn){
+    btn.addEventListener('click',async function(){
+      // ⚠ 방어적 권한 검사: 이의 기각 여부 결정은 평가자만 가능
+      if(!isJudge()){alert('이의제기 기각 여부 결정 권한은 평가자에게만 있습니다.');return;}
+      var id=btn.getAttribute('data-id');
+      var ap=aps.find(function(a){return a.id===id;});if(!ap)return;
+      var reason=prompt('이의 기각 사유를 입력하세요 (기록에 남습니다):');
+      if(reason===null||!reason.trim()){alert('기각 사유는 필수입니다.');return;}
+      ap.status='rejected_final';ap.objectionDenyReason=reason.trim();ap.objectionDeniedAt=Date.now();
+      await saveApproval(ap);await saveAudit('objection_denied',{approvalId:ap.id,by:currentUser?currentUser.id:null,reason:ap.objectionDenyReason});await refreshAll(true);
+    });
+  });
+
+  // 출제자: 승인 이유 제출
+  box.querySelectorAll('.submit-author-reason').forEach(function(btn){
+    btn.addEventListener('click',async function(){
+      var id=btn.getAttribute('data-id');
+      var ta=document.getElementById('reason_'+id);
+      var text=ta?ta.value.trim():'';
+      var ap=aps.find(function(a){return a.id===id;});if(!ap)return;
+      ap.approvalReason=text||'(설명 없음)';ap.approvalReasonBy=currentUser?currentUser.name:null;ap.approvalReasonAt=Date.now();
+      await saveApproval(ap);await refreshAll(true);
+    });
+  });
+
+  // 평가장: 재량승인/기각
+  box.querySelectorAll('.chief-approve').forEach(function(btn){
+    btn.addEventListener('click',async function(){
+      var id=btn.getAttribute('data-id');
+      var ap=aps.find(function(a){return a.id===id;});if(!ap)return;
+      ap.status='approved';ap.reviewedBy=currentUser.id;ap.reviewedAt=Date.now();ap.chiefAction='approved';ap.chiefActionAt=Date.now();
+      await saveApproval(ap);await refreshAll(true);
+    });
+  });
+  box.querySelectorAll('.chief-reject').forEach(function(btn){
+    btn.addEventListener('click',async function(){
+      var id=btn.getAttribute('data-id');
+      var ap=aps.find(function(a){return a.id===id;});if(!ap)return;
+      ap.status='rejected';ap.rejectReason='재량에 의한 기각';ap.reviewedBy=currentUser.id;ap.reviewedAt=Date.now();ap.chiefAction='rejected';ap.chiefActionAt=Date.now();
+      await saveApproval(ap);
+      
+      // ← 질문 반려 재량 기각: type이 'questionReject'이면 질문을 pending으로 복원
+      if(ap.type==='questionReject' && ap.relatedQuestionId){
+        try{
+          var qs=await fetchQuestions();
+          var q=qs.find(function(x){return x.id===ap.relatedQuestionId;});
+          if(q && q.status==='pending'){
+            q.rejectedBy=null;
+            q.rejectedAt=null;
+            await saveQuestions(qs);
+          }
+        }catch(e){console.error('question reject revert failed',e);}
+      }
+      
+      await refreshAll(true);
+    });
+  });
+
+  // ==================== Phase 1: 참가자 정답 제출 투표 ====================
+  box.querySelectorAll('.as-vote').forEach(function(btn){
+    btn.addEventListener('click',async function(){
+      // ⚠ 방어적 권한/상태 검사: 참가자만 투표 가능, 이미 종료된 의안/중복 투표는 차단
+      // (이 가드가 없으면 합의 종료 후 추가 투표 시마다 Phase2 평가가 중복 생성되는 버그가 발생함)
+      if(!isPlayer()){alert('투표 권한은 참가자에게만 있습니다.');return;}
+      var id=btn.getAttribute('data-id');
+      var ap=aps.find(function(a){return a.id===id;});if(!ap)return;
+      if(ap.status!=='pending'){alert('이미 합의가 종료된 의안입니다.');return;}
+      ap.votes = ap.votes || {};
+      if(ap.votes[currentUser.id]!==undefined){alert('이미 투표하셨습니다.');return;}
+      var vote=btn.getAttribute('data-vote')==='yes'?true:false;
+      
+      ap.votes[currentUser.id] = vote;
+      
+      // 5분의 4 투표율 계산
+      var totalPlayers = appState.roster.filter(function(r){return r.role==='참가자';}).length;
+      var yesCount = Object.keys(ap.votes).filter(function(k){return ap.votes[k]===true;}).length;
+      var requiredVotes = Math.ceil(totalPlayers * 4 / 5);
+      
+      // 5분의 4 이상 찬성 시 자동 승인 (status가 아직 pending일 때만 — 중복 생성 방지)
+      if(ap.status==='pending' && yesCount >= requiredVotes){
+        ap.status='approved';
+        ap.passed=true;
+        ap.approvedAt=Date.now();
+        
+        // ← 자동으로 Phase 2 (answerEval) 생성
+        try{
+          await createApprovalWithLog({
+            type:'answerEval',
+            title:'정답 평가 · '+escapeHtml(ap.answerText.substring(0,30))+'...',
+            answerText: ap.answerText,
+            relatedSubmissionId: ap.id,
+            authorId: null,
+            authorName: '시스템',
+            scores: {},
+            body: ap.answerText
+          });
+        }catch(e){console.error('answerEval creation failed', e);}
+      }
+      
+      ap.updatedAt=Date.now();
+      await saveApproval(ap);
+      await saveAudit('answer_submit_vote',{approvalId:ap.id,voter:currentUser?currentUser.id:null,vote:vote?'yes':'no',totalVotes:yesCount,required:requiredVotes});
+      await refreshAll(true);
+    });
+  });
+
+  // ==================== Phase 2: 평가자 평가 제출 (확정) — 기존에 누락되어 있던 기능 ====================
+  box.querySelectorAll('.ae-submit').forEach(function(btn){
+    btn.addEventListener('click',async function(){
+      // ⚠ 방어적 권한/상태 검사
+      if(!isJudge()){alert('평가 제출 권한은 평가자에게만 있습니다.');return;}
+      var id=btn.getAttribute('data-id');
+      var ap=aps.find(function(a){return a.id===id;});if(!ap)return;
+      if(ap.type!=='answerEval')return;
+      if(ap.status!=='pending'){alert('이미 종료된 평가입니다.');return;}
+      ap.scores = ap.scores || {};
+      if(ap.scores[currentUser.id]){alert('이미 평가를 제출하셨습니다.');return;}
+
+      ap.scores[currentUser.id] = {};
+      CATS.forEach(function(cat){
+        var scoreEl = document.getElementById('score_'+ap.id+'_'+cat.key);
+        var v = scoreEl ? Number(scoreEl.value) : NaN;
+        if(isNaN(v)) v = 0;
+        if(v<0) v=0; if(v>10) v=10;
+        ap.scores[currentUser.id][cat.key] = v;
+      });
+      try{ clearLocalDraft('approval:scores:'+ap.id); }catch(e){}
+
+      // 모든 평가자 평가 완료 여부 확인
+      var judges = appState.roster.filter(function(r){return r.role==='평가자';});
+      var judgesEvaluated = Object.keys(ap.scores).length;
+      var totalJudges = judges.length;
+
+      // 모든 평가자 평가 완료 시에만 최종 판정 (룰: 모든 항목 6점 초과, 평균 8점 초과, 유사성 7점 이상 / 시행령 제4조의5⑬: 평가자 60% 이상 정답 판정)
+      if(judgesEvaluated === totalJudges && totalJudges > 0){
+        var judgesApproved = 0;
+        Object.keys(ap.scores).forEach(function(jid){
+          var jScores = ap.scores[jid];
+          var jAverages = {};
+          CATS.forEach(function(cat){ jAverages[cat.key] = jScores[cat.key] || 0; });
+          var jAvgAll = Object.keys(jAverages).reduce(function(a,k){return a+jAverages[k];},0)/CATS.length;
+          var jAllCatsPassed = true;
+          CATS.forEach(function(cat){
+            if(cat.key==='sim'){ if(jAverages[cat.key] < 7) jAllCatsPassed=false; }
+            else { if(jAverages[cat.key] <= 6) jAllCatsPassed=false; }
+          });
+          var jPassed = jAllCatsPassed && (jAvgAll > 8);
+          if(jPassed) judgesApproved++;
+        });
+
+        var consensusPercentage = (judgesApproved / totalJudges * 100).toFixed(2);
+        var consensusPassed = judgesApproved >= Math.ceil(totalJudges * 0.6); // 60% 이상
+
+        ap.consensus = {
+          approvedCount: judgesApproved,
+          totalCount: totalJudges,
+          percentage: consensusPercentage,
+          passed: consensusPassed,
+          finalResult: consensusPassed ? 'correct' : 'incorrect'
+        };
+        // 전원 평가 완료 시에만 최종 상태 확정 (한 명만 제출했다고 바로 종료되지 않도록 함)
+        ap.status = consensusPassed ? 'approved' : 'rejected';
+        ap.reviewedBy = currentUser.id;
+        ap.reviewedAt = Date.now();
+      }
+
+      ap.updatedAt = Date.now();
+      await saveApproval(ap);
+      await saveAudit('answer_eval_submit',{approvalId:ap.id,judge:currentUser?currentUser.id:null,judgesEvaluated:judgesEvaluated,totalJudges:totalJudges});
+      await refreshAll(true);
+    });
+  });
+
+  // ==================== Phase 2: 평가자 정답 평가 점수 draft 자동 저장 ====================
+  CATS.forEach(function(cat){
+    box.querySelectorAll('input.ae-score[id$="_'+cat.key+'"]').forEach(function(scoreInput){
+      var scoreId = scoreInput.id; // 형식: score_[approvalId]_[catKey]
+      var parts = scoreId.split('_');
+      var apId = parts[1];
+      
+      // draft 복원
+      try{
+        var draftScores = loadLocalDraft('approval:scores:'+apId);
+        if(draftScores && draftScores[cat.key] !== undefined){
+          scoreInput.value = draftScores[cat.key];
+        }
+      }catch(e){}
+      
+      // input 시 draft 저장
+      scoreInput.addEventListener('input', function(){
+        try{
+          var existingDraft = loadLocalDraft('approval:scores:'+apId) || {};
+          existingDraft[cat.key] = Number(scoreInput.value) || 0;
+          saveLocalDraft('approval:scores:'+apId, existingDraft);
+        }catch(e){}
+      });
+    });
+  });
+
+  // ==================== Phase 2: 오답 피드백 제출 ====================
+  box.querySelectorAll('.submit-feedback').forEach(function(btn){
+    btn.addEventListener('click',async function(){
+      var id=btn.getAttribute('data-id');
+      var ta=document.getElementById('feedback_'+id);
+      var feedback=ta?ta.value.trim():'';
+      if(!feedback){alert('피드백을 입력하세요.');return;}
+      var ap=aps.find(function(a){return a.id===id;});if(!ap)return;
+      
+      ap.feedbacks = ap.feedbacks || {};
+      ap.feedbacks[currentUser.id] = feedback;
+      ap.feedbackSubmittedAt = Date.now();
+      
+      await saveApproval(ap);
+      await refreshAll(true);
+    });
+  });
+}
+
+/* =====================================================
+   TAB: 질문
+===================================================== */
+function renderQuestionTab(){
+  var box=document.getElementById('tabContent');
+  var qs=appState.questions;
+  var html='';
+
+  // 참가자: 질문 제출 폼
+  if(isPlayer()){
+    html+='<section><div class="section-label"><span class="no mono">질문</span><span class="name">질문 제시</span></div>'+
+      '<div class="card">'+
+        '<p style="font-size:12.5px;color:var(--text-soft);margin:0 0 12px;">합의 절차를 거쳐 결정된 질문을 제출하세요. 질문은 원칙적으로 예·아니요로 답변 가능한 형태여야 합니다.</p>'+
+        '<div class="field"><label for="qText">질문 내용</label><textarea id="qText" placeholder="예: 주인공은 사고로 사망한 건가요?"></textarea></div>'+
+        '<button id="submitQuestion" type="button" class="btn btn-primary">질문 제출</button>'+
+      '</div></section>';
+  }
+
+  // 질문 목록
+  var pending=qs.filter(function(q){return q.status==='pending';});
+  var answered=qs.filter(function(q){return q.status==='answered';});
+  var rejected=qs.filter(function(q){return q.status==='rejected';});
+
+  if(pending.length>0){
+    html+='<section><div class="section-label"><span class="no mono">대기</span><span class="name">답변 대기 중 ('+pending.length+'건)</span></div>';
+    html+=pending.map(function(q,i){return renderQuestionItem(q,i,qs);}).join('');
+    html+='</section>';
+  }
+
+  // ← 반려된 질문 섹션
+  if(rejected.length>0){
+    html+='<section><div class="section-label"><span class="no mono">반려</span><span class="name">반려된 질문 ('+rejected.length+'건)</span></div>';
+    html+=rejected.map(function(q,i){return renderQuestionItem(q,i,qs);}).join('');
+    html+='</section>';
+  }
+
+  html+='<section><div class="section-label"><span class="no mono">완료</span><span class="name">질문 기록 ('+answered.length+'건)</span></div>';
+  if(answered.length===0){
+    html+='<div class="card empty">아직 답변된 질문이 없습니다.</div>';
+  } else {
+    html+=answered.map(function(q,i){return renderQuestionItem(q,i,qs);}).join('');
+  }
+  html+='</section>';
+
+  box.innerHTML=html;
+
+  // 참가자 질문 제출
+  if(isPlayer()){
+    var submitQ=document.getElementById('submitQuestion');
+    // restore draft
+    try{var dq=loadLocalDraft('composer:question'); if(dq && document.getElementById('qText')) document.getElementById('qText').value = dq.text||'';}catch(e){}
+    if(document.getElementById('qText')) document.getElementById('qText').addEventListener('input', function(){ try{ saveLocalDraft('composer:question',{ text: document.getElementById('qText')?document.getElementById('qText').value.trim():'' }); }catch(e){} });
+    if(submitQ) submitQ.addEventListener('click',async function(){
+      var text=document.getElementById('qText').value.trim();
+      if(!text){alert('질문을 입력하세요.');return;}
+      // 질문은 먼저 합의(투표) 절차를 통해 상정됩니다. 참가자 합의가 가결되면 실제 질문 목록에 등록됩니다.
+      var qid=genId();
+      var proposed={id:qid,no:null,text:text,status:'proposed',askedBy:currentUser.name,askedAt:Date.now()};
+      // 발의: 참가자 대상 합의 투표 생성
+      var denom=Math.max(appState.roster.filter(function(r){return r.role==='참가자';}).length,1);
+      var pollTitle='질문 합의 제안: '+(text.length>60?text.slice(0,60)+'...':text);
+      await createPollWithLog({type:'consent',preset:'qagree',title:pollTitle,detail:proposed.text,denom:denom,voterRole:'참가자',proposedQuestion:proposed});
+      try{clearLocalDraft('composer:question');}catch(e){}
+      document.getElementById('qText').value='';
+      await refreshAll(true);
+    });
+  }
+
+  // 출제자/평가자: 답변 작성
+  attachQuestionEvents(box);
+}
+
+function renderQuestionItem(q, idx, allQs){
+  var html='<div class="question-item" data-qid="'+escapeHtml(q.id)+'">'+
+    '<div class="q-num">Q'+q.no+' · '+timeAgo(q.askedAt)+' · '+escapeHtml(q.askedBy||'참가자')+'</div>'+
+    '<div class="q-text">'+escapeHtml(q.text)+'</div>';
+  
+  // ← 반려된 질문 표시
+  if(q.status==='rejected'){
+    html+='<div class="q-rejected-banner">⛔ 이 질문은 반려되었습니다. (반려자: '+escapeHtml(q.rejectedBy||'?')+' · '+timeAgo(q.rejectedAt)+')</div>';
+  }
+
+  if(q.answer){
+    html+='<div class="q-answer"><div class="answer-label">답변</div>'+escapeHtml(q.answer)+'</div>';
+  }
+
+  // 출제자: 답변 작성
+  if(isQuestioner()&&q.status==='pending'){
+    html+='<div style="margin-top:8px;">'+
+      '<div class="field"><label>답변 작성 (승인 후 공개됩니다)</label>'+
+        '<div style="display:flex;gap:8px;margin-bottom:6px;">'+
+          '<button class="btn btn-sm btn-secondary q-preset-yes" data-qid="'+escapeHtml(q.id)+'">예</button>'+
+          '<button class="btn btn-sm btn-secondary q-preset-no" data-qid="'+escapeHtml(q.id)+'">아니요</button>'+
+          '<button class="btn btn-sm btn-secondary q-preset-irr" data-qid="'+escapeHtml(q.id)+'">관계없음</button>'+
+        '</div>'+
+        '<textarea class="q-answer-text" id="q_answer_'+escapeHtml(q.id)+'" placeholder="서술형 답변이 필요한 경우 직접 입력..." style="min-height:60px;"></textarea>'+
+      '</div>'+
+      '<button class="btn btn-primary btn-sm q-submit-answer" data-qid="'+escapeHtml(q.id)+'">답변 승인 요청 제출</button>'+
+    '</div>';
+  }
+
+  // 평가자/출제자: 간단 반려 체크박스 추가 (빠른 거부)
+  if((isJudge()||isQuestioner())&&q.status==='pending'){
+    html+='<div style="margin-top:8px;display:flex;align-items:center;gap:8px;">'+
+      '<input type="checkbox" class="q-reject-chk" data-qid="'+escapeHtml(q.id)+'" id="qreject_'+escapeHtml(q.id)+'"/>'+
+      '<label for="qreject_'+escapeHtml(q.id)+'" style="font-size:13px;color:var(--text-soft);margin:0;">질문 반려</label>'+
+    '</div>';
+  }
+
+  html+='</div>';
+  return html;
+}
+
+function attachQuestionEvents(box){
+  // 프리셋 버튼 클릭 시 textarea 채우기
+  ['yes','no','irr'].forEach(function(preset){
+    box.querySelectorAll('.q-preset-'+preset).forEach(function(btn){
+      btn.addEventListener('click',function(){
+        var item=btn.closest('.question-item');
+        var ta=item?item.querySelector('.q-answer-text'):null;
+        if(!ta)return;
+        if(preset==='yes')ta.value='예';
+        else if(preset==='no')ta.value='아니요';
+        else ta.value='관계없음';
+        // ← draft 저장
+        var qid=item?item.getAttribute('data-qid'):null;
+        if(qid) try{ saveLocalDraft('q_answer_'+qid, {text:ta.value}); }catch(e){}
+      });
+    });
+  });
+  
+  // ← 각 질문 답변 textarea에 input 이벤트 바인딩 (draft 자동 저장)
+  box.querySelectorAll('.q-answer-text').forEach(function(ta){
+    var item=ta.closest('.question-item');
+    var qid=item?item.getAttribute('data-qid'):null;
+    if(qid){
+      // draft 복원
+      try{ var dq=loadLocalDraft('q_answer_'+qid); if(dq) ta.value=dq.text||''; }catch(e){}
+      // input 시 draft 저장
+      ta.addEventListener('input', function(){
+        try{ saveLocalDraft('q_answer_'+qid, {text:ta.value}); }catch(e){}
+      });
+    }
+  });
+  
+  // 답변 제출 (승인 요청으로)
+  box.querySelectorAll('.q-submit-answer').forEach(function(btn){
+    btn.addEventListener('click',async function(){
+      var qid=btn.getAttribute('data-qid');
+      var item=btn.closest('.question-item');
+      var ta=item?item.querySelector('.q-answer-text'):null;
+      var answerText=ta?ta.value.trim():'';
+      if(!answerText){alert('답변을 입력하세요.');return;}
+      var qs2=await fetchQuestions();
+      var q=qs2.find(function(x){return x.id===qid;});
+      if(!q)return;
+      // 답변을 승인 요청으로 제출
+      await createApprovalWithLog({
+        type:'answer',
+        title:'질문 Q'+q.no+' 답변: '+q.text.slice(0,30)+(q.text.length>30?'...':''),
+        body:'질문: '+q.text+'\n\n답변: '+answerText,
+        authorId:currentUser.id,authorName:currentUser.name,
+        relatedQuestionId:qid,proposedAnswer:answerText
+      });
+      // 질문을 임시 잠금 (답변 대기 중)
+      q.pendingAnswer=answerText;
+      await saveQuestions(qs2);
+      await refreshAll(true);
+      // 승인 탭으로 전환
+      activeTab='approve';
+      renderTabContent();
+    });
+  });
+
+  // 질문 반려 체크박스 처리
+  box.querySelectorAll('.q-reject-chk').forEach(function(cb){
+    cb.addEventListener('change',async function(){
+      var qid=cb.getAttribute('data-qid');
+      var qs2=await fetchQuestions();
+      var q=qs2.find(function(x){return x.id===qid;});
+      if(!q)return;
+      if(cb.checked){
+        // ← 반려 체크 시 approval로 생성해서 다른 평가자의 승인을 받게 함
+        await createApprovalWithLog({
+          type:'questionReject',
+          title:'질문 Q'+q.no+' 반려: '+q.text.slice(0,30)+(q.text.length>30?'...':''),
+          body:'질문 내용:\n\n'+q.text+'\n\n이 질문의 반려를 승인합니다.',
+          authorId:currentUser.id,
+          authorName:currentUser.name,
+          relatedQuestionId:qid
+        });
+      } else {
+        // ← 체크 해제 시 관련된 반려 approval 제거
+        var aps=await fetchApprovals();
+        var rejectAp=aps.find(function(a){return a.type==='questionReject' && a.relatedQuestionId===qid && a.status!=='approved';});
+        if(rejectAp){
+          await deleteApproval(rejectAp.id);
+        }
+      }
+      await refreshAll(true);
+    });
+  });
+}
+
+/* =====================================================
+   TAB: 명부
+===================================================== */
+function renderRosterTab(){
+  var box=document.getElementById('tabContent');
+  var judges=appState.roster.filter(function(r){return r.role==='평가자';});
+  var questioners=appState.roster.filter(function(r){return r.role==='출제자';});
+  var players=appState.roster.filter(function(r){return r.role==='참가자';});
+  var chief=appState.chiefId?appState.roster.find(function(r){return r.id===appState.chiefId;}):null;
+
+  var html='<section><div class="section-label"><span class="no mono">명부</span><span class="name">참여자 '+appState.roster.length+'명</span></div>'+
+    '<div class="card">';
+
+  if(chief){
+    html+='<div class="chip-group"><div class="cap">⚖ 평가장</div><div class="chips"><span class="chip chief">'+escapeHtml(chief.name)+'</span></div></div>';
+  }
+
+  // 전담 평가원 표시
+  if(appState.chairs && Object.keys(appState.chairs).length){
+    html+='<div class="chip-group"><div class="cap">전담 평가원</div><div class="chips">'+Object.keys(appState.chairs).map(function(k){var c=appState.chairs[k];return'<span class="chip">'+escapeHtml(k)+' : '+escapeHtml(c.name)+'</span>';}).join('')+'</div></div>';
+  }
+
+  html+='<div class="chip-group"><div class="cap">평가자 '+judges.length+'명</div><div class="chips">'+
+    (judges.length?judges.map(function(j){var isC=j.id===appState.chiefId;return'<span class="chip'+(isC?' chief':'')+'">'+(isC?'⚖ ':'')+escapeHtml(j.name)+'</span>';}).join(''):'<span class="chip">없음</span>')+
+  '</div></div>'+
+  '<div class="chip-group"><div class="cap">출제자 '+questioners.length+'명</div><div class="chips">'+
+    (questioners.length?questioners.map(function(q){return'<span class="chip">'+escapeHtml(q.name)+'</span>';}).join(''):'<span class="chip">없음</span>')+
+  '</div></div>'+
+  '<div class="chip-group"><div class="cap">참가자 '+players.length+'명</div><div class="chips">'+
+    (players.length?players.map(function(p){return'<span class="chip">'+escapeHtml(p.name)+'</span>';}).join(''):'<span class="chip">없음</span>')+
+  '</div></div>'+
+  '</div></section>';
+
+  // 출제자가 평가장 선임한 경우 이미 투표 탭에서 하므로 여기선 안내만
+  if(isQuestioner()){
+    html+='<section><div class="section-label"><span class="no mono">안내</span><span class="name">평가장 선임</span></div>'+
+      '<div class="card dark"><p style="font-size:12.5px;margin:0;line-height:1.7;">평가장 선임은 <strong>투표 탭 → 새 의안 발의 → 평가장 선임</strong> 탭에서 진행하세요.<br/>선임 의안 가결 시 자동으로 평가장이 등록됩니다.</p></div></section>';
+  }
+
+  // 평가장 권한: 재량 행사 및 즉시 임명
+  if(isChief()){
+    var judgeOptions=appState.roster.filter(function(r){return r.role==='평가자';}).map(function(j){return'<option value="'+escapeHtml(j.id)+'">'+escapeHtml(j.name)+'</option>';}).join('');
+    html+='<section><div class="section-label"><span class="no mono">권한</span><span class="name">평가장 도구</span></div>'+
+      '<div class="card">'+
+      '<div class="field"><label for="appointSelect">즉시 임명: 평가자 선택</label><select id="appointSelect">'+(judgeOptions||'<option>평가자 없음</option>')+'</select></div>'+
+      (appState.nominationPending?('<div class="hairline" style="margin-top:12px;margin-bottom:12px;"><strong>출제자 지명 절차가 진행 중입니다.</strong></div><div class="field"><label for="nominateSelect">후보 선택</label><select id="nominateSelect">'+(appState.roster.map(function(r){return'<option value="'+escapeHtml(r.id)+'">'+escapeHtml(r.name)+' ('+escapeHtml(r.role)+')</option>';}).join('')||'<option>참여자 없음</option>')+'</select></div><div class="btn-row"><button id="nominateBtn" class="btn btn-primary btn-sm">출제자 지명</button></div>'):'')+
+      '<div class="btn-row"><button id="appointBtn" class="btn btn-primary btn-sm">즉시 평가장 임명</button><button id="clearChiefBtn" class="btn btn-ghost btn-sm">해임</button></div>'+
+      '<hr style="margin:12px 0;"/>'+
+      '<div class="field"><label>강제 합의 발의</label><div class="hint">강제 합의는 과반수 반대 없음 기준으로 처리됩니다.</div></div>'+
+      '<div class="btn-row"><button id="forcedAgreeBtn" class="btn btn-secondary btn-sm">강제 합의 발의</button></div>'+
+      '</div></section>';
+  }
+
+  box.innerHTML=html;
+  // 평가장 도구 이벤트 바인딩
+  if(isChief()){
+    // appointSelect 값이 선택될 때마다 저장
+    var appointSelect=document.getElementById('appointSelect');
+    if(appointSelect){
+      appointSelect.addEventListener('change',function(){
+        try{ saveLocalDraft('chief:selected', {value:appointSelect.value}); }catch(e){}
+      });
+      // 페이지 로드 시 복원
+      try{ var dc=loadLocalDraft('chief:selected'); if(dc && dc.value){ appointSelect.value=dc.value; } }catch(e){}
+    }
+    
+    var appointBtn=document.getElementById('appointBtn');
+    if(appointBtn){appointBtn.addEventListener('click',async function(){var sel=document.getElementById('appointSelect');if(!sel||!sel.value)return;await saveChief({id:sel.value,name:sel.options[sel.selectedIndex].text,appointedAt:Date.now()});try{ clearLocalDraft('chief:selected'); }catch(e){} await refreshAll(true);});}
+    var clearBtn=document.getElementById('clearChiefBtn');
+    if(clearBtn){clearBtn.addEventListener('click',async function(){await saveChief(null);try{ clearLocalDraft('chief:selected'); }catch(e){} await refreshAll(true);});}
+    var forcedBtn=document.getElementById('forcedAgreeBtn');
+    if(forcedBtn){forcedBtn.addEventListener('click',async function(){
+      // 강제 합의 의안: 전체 대상 기본, 재적 인원은 현재 roster length
+      var N=Math.max(appState.roster.length,1);
+      await createPollWithLog({type:'consent',preset:'forced',title:'[강제 합의] 평가장 발의',detail:'강제 합의(과반수 반대 없음 기준) 발의',denom:N,voterRole:'전체',override:{forced:true}});
+      await refreshAll(true);
+    });}
+    var nominateSelect=document.getElementById('nominateSelect');
+    if(nominateSelect){
+      nominateSelect.addEventListener('change',function(){
+        try{ saveLocalDraft('nominee:selected', {value:nominateSelect.value}); }catch(e){}
+      });
+      // 페이지 로드 시 복원
+      try{ var dn=loadLocalDraft('nominee:selected'); if(dn && dn.value){ nominateSelect.value=dn.value; } }catch(e){}
+    }
+    var nominateBtn=document.getElementById('nominateBtn');
+    if(nominateBtn){nominateBtn.addEventListener('click',async function(){var sel=document.getElementById('nominateSelect');if(!sel||!sel.value)return;var obj={id:sel.value,name:sel.options[sel.selectedIndex].text,designatedBy:currentUser?currentUser.id:null,at:Date.now()};await saveDesignatedQuestioner(obj);await clearNominationPending();await saveAudit('questioner_designated',obj);try{ clearLocalDraft('nominee:selected'); }catch(e){} await refreshAll(true);});}
+  }
+}
+
+/* ===== refresh loop ===== */
+async function refreshAll(force){
+  var savedScrollY = window.scrollY;
+  // ← input 값 전역 저장 (모든 탭에서 입력 보존)
+  var inputs=document.querySelectorAll('input,textarea,select');
+  appState._savedInputs={};
+  var focEl=document.activeElement;
+  if(focEl && (focEl.tagName==='INPUT'||focEl.tagName==='TEXTAREA'||focEl.tagName==='SELECT')) {
+    appState._focusedElementId=focEl.id;
+  }
+  inputs.forEach(function(el){
+    if(el.id) appState._savedInputs[el.id]={
+      value: el.type==='checkbox' ? el.checked : el.value,
+      selectionStart: el.selectionStart,
+      selectionEnd: el.selectionEnd
+    };
+  });
+
+  var roster=await fetchRoster();
+  var polls=await fetchPolls();
+  // 자동 만료 처리: 열린 투표 중 expiresAt이 지난 것은 마감
+  var expired = polls.filter(function(p){return p.status==='open' && p.expiresAt && p.expiresAt<=Date.now();});
+  if(expired.length){
+    for(var i=0;i<expired.length;i++){await finalizePoll(expired[i]);}
+    // 재조회
+    polls=await fetchPolls();
+  }
+  var approvals=await fetchApprovals();
+  var questions=await fetchQuestions();
+  var chiefData=await fetchChief();
+  var chairsData=await fetchChairs();
+  var nominationPending=await fetchNominationPending();
+  var designatedQRaw=await storageGet('designatedQuestioner');
+  var designatedQuestioner=safeParse(designatedQRaw,null);
+  appState.roster=roster;
+  appState.polls=polls;
+  appState.approvals=approvals.filter(function(a){return!a.isNotice;}); // 공지는 별도
+  appState.questions=questions;
+  appState.chiefId=chiefData?chiefData.id:null;
+  appState.chairs=chairsData||{};
+  appState.nominationPending=nominationPending||null;
+  appState.designatedQuestioner=designatedQuestioner||null;
+
+  var active=polls.find(function(p){return p.status==='open';})||null;
+  var votes=active?await fetchVotes(active.id):{};
+  var sig=active?(active.id+':'+active.status):'none';
+  var sigChanged=sig!==appState.lastSig;
+  appState.activePoll=active;
+  appState.votes=votes;
+  appState.lastSig=sig;
+
+  if(force||sigChanged){
+    if(!force && appState._suspendRender){
+      // 사용자가 입력 중이면 지금 다시 그리지 않고, 포커스가 빠질 때 적용
+      appState._pendingRenderFn=renderMain;
+    } else {
+      renderMain();
+      window.scrollTo(0, savedScrollY);
+    }
+  } else {
+    // soft refresh: 현재 탭만 다시 그리기
+    if(appState._suspendRender){
+      appState._pendingRenderFn=renderTabContent;
+    } else {
+      renderTabContent();
+      window.scrollTo(0, savedScrollY);
+    }
+  }
+}
+function startHeartbeat(){
+  if(heartbeatTimer)clearInterval(heartbeatTimer);
+
+  heartbeatTimer=setInterval(async function(){
+
+    if(!currentUser)return;
+
+    await storageSet(
+      'participant:'+currentUser.id,
+      JSON.stringify({
+        name:currentUser.name,
+        role:currentUser.role,
+        joinedAt:currentUser.joinedAt,
+        lastSeen:Date.now()
+      })
+    );
+
+    refreshAll(false);
+
+  },4000);
+}
+
+/* ===== 카운트다운 전용 1초 틱 =====
+   하트비트(4초)나 실시간 DB 갱신 주기와 무관하게, 화면에 떠 있는
+   ⏱ 남은시간 표시만 매초 정확히 갱신한다. DOM을 새로 그리지 않고
+   텍스트만 바꾸므로 입력 중인 다른 요소에도 영향이 없다. */
+function tickCountdown(){
+  var el=document.getElementById('pollCountdown');
+  if(!el) return;
+  var poll=appState.activePoll;
+  if(!poll||!poll.expiresAt||poll.status!=='open') return;
+  var rem=Math.max(0,Math.floor((poll.expiresAt-Date.now())/1000));
+  var m=Math.floor(rem/60);var s=rem%60;
+  el.textContent='⏱ '+(m>0?m+'분 ':'')+s+'초 남음';
+}
+function startCountdownTicker(){
+  if(countdownTimer)clearInterval(countdownTimer);
+  countdownTimer=setInterval(tickCountdown,1000);
+}
+
+
+/* ===== boot ===== */
+// Realtime DB listener: 전체 DB 변경 시 소프트 리프레시
+// onValue는 DB 어딘가가 바뀔 때마다(다른 참가자의 하트비트 포함) 매우 자주 호출될 수 있으므로,
+// 짧은 시간 안에 여러 번 들어오면 한 번만 처리하도록 모아준다(디바운스).
+var dbRefreshDebounceTimer=null;
+function scheduleSoftRefresh(){
+  if(dbRefreshDebounceTimer) return;
+  dbRefreshDebounceTimer=setTimeout(function(){
+    dbRefreshDebounceTimer=null;
+    refreshAll(false).catch(function(){});
+  },500);
+}
+try{
+  onValue(ref(db),function(snapshot){
+    // snapshot may be large; trigger a refresh that reads canonical storage paths
+    scheduleSoftRefresh();
+  });
+}catch(e){console.error('onValue setup failed',e);} 
+
+// 창 닫을 때 자동 처리 (설정 기반): 미참여로 전환 및 게임 기록 초기화 시도
+// Note: 'unload' may be disallowed by Permissions Policy in some embeds/browsers.
+// Use 'pagehide' and 'visibilitychange' (hidden) which are allowed and more reliable.
+function handlePageClose(e){
+  try{
+    if(!currentUser) return;
+    var auto = (window.localStorage && window.localStorage.getItem('setting:autoRemoveOnClose')==='true');
+    var clearGame = (window.localStorage && window.localStorage.getItem('setting:clearGameOnLeave')==='true');
+    if(auto){
+      // best-effort synchronous local cleanup
+      try{ if(window.localStorage) window.localStorage.removeItem('participant:'+currentUser.id); }catch(err){}
+      // best-effort async cleanup (do not await; may not complete during unload)
+      try{ storageDelete('participant:'+currentUser.id); }catch(err){}
+      try{ remove(ref(db,'participants/'+currentUser.id)); }catch(err){}
+      try{ saveAudit('participant_left',{participantId:currentUser.id,name:currentUser.name}); }catch(err){}
+    }
+    if(clearGame){
+      try{ archiveAndClearGameRecords(); }catch(err){}
+    }
+  }catch(e){console.error('page close handler',e);}  
+}
+
+// attach handlers
+try{
+  window.addEventListener('pagehide', handlePageClose, false);
+  document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='hidden') handlePageClose(); });
+}catch(e){console.error('attach page close handlers failed',e);} 
+
+renderJoin();
+startCountdownTicker();
+</script>
+</body>
+</html>
