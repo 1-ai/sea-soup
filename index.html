@@ -521,6 +521,8 @@ function pendingQuestionCount(){return appState.questions.filter(function(q){ret
 
 /* ===== render: join ===== */
 function renderJoin(){
+  appState._suspendRender=false;
+  appState._pendingRenderFn=null;
   document.getElementById('app').innerHTML=
     '<div class="join-shell"><div class="join-card">'+
       '<div class="brandmark">'+brandIcon()+'</div>'+
@@ -584,12 +586,15 @@ async function leaveAndRejoin(){
   currentUser=null;
   if(heartbeatTimer){clearInterval(heartbeatTimer);heartbeatTimer=null;}
   composerOpen=false;
+  appState._suspendRender=false;
+  appState._pendingRenderFn=null;
   renderJoin();
 }
 
 /* ===== render: main shell ===== */
 function renderMain(){
   var root=document.getElementById('app');
+  if(!root) return;
   var roleTagClass=isJudge()?'judge':(isQuestioner()?'questioner':'player');
 
   var pendA=pendingApprovalCount();
@@ -670,6 +675,7 @@ function renderTabContent(){
 ===================================================== */
 function renderVoteTab(){
   var box=document.getElementById('tabContent');
+  if(!box) return;
   var poll=appState.activePoll;
   var html='';
 
@@ -1178,6 +1184,7 @@ function renderComposerSection(){
 ===================================================== */
 function renderApproveTab(){
   var box=document.getElementById('tabContent');
+  if(!box) return;
   var aps=appState.approvals;
   var pending=aps.filter(function(a){return a.status==='pending';});
   var objected=aps.filter(function(a){return a.status==='objected';});
@@ -2050,6 +2057,7 @@ function attachApprovalEvents(box, aps){
 ===================================================== */
 function renderQuestionTab(){
   var box=document.getElementById('tabContent');
+  if(!box) return;
   var qs=appState.questions;
   var html='';
 
@@ -2254,6 +2262,7 @@ function attachQuestionEvents(box){
 ===================================================== */
 function renderRosterTab(){
   var box=document.getElementById('tabContent');
+  if(!box) return;
   var judges=appState.roster.filter(function(r){return r.role==='평가자';});
   var questioners=appState.roster.filter(function(r){return r.role==='출제자';});
   var players=appState.roster.filter(function(r){return r.role==='참가자';});
