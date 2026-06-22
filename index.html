@@ -496,11 +496,15 @@ function simpleHash(s){
   return (h>>>0).toString(16);
 }
 async function fetchAdminPwHash(){
-  var v=await storageGet('admin_pw_hash');
-  return v?v.trim():null;
+  try{
+    var snapshot=await get(ref(db,'admin_pw_hash'));
+    return (snapshot&&snapshot.exists())?String(snapshot.val()).trim():null;
+  }catch(e){console.error('fetchAdminPwHash fail',e);return null;}
 }
 async function saveAdminPwHash(pw){
-  await storageSet('admin_pw_hash', simpleHash(pw));
+  try{
+    await set(ref(db,'admin_pw_hash'), simpleHash(pw));
+  }catch(e){console.error('saveAdminPwHash fail',e);throw e;}
 }
 async function verifyAdminPw(pw){
   var stored=await fetchAdminPwHash();
@@ -968,8 +972,7 @@ function renderVoteTab(){
   var viewArch=document.getElementById('viewArchivesBtn');
   if(viewArch) viewArch.addEventListener('click',async function(){
     var keys=await listArchives();
-    if(!keys||keys.length===0){alert('보관된 게임 로그가 없습니다.');return;}
-    renderArchiveManager(keys);
+    await renderArchiveManager(keys||[]);
   });
 
   if(poll){renderVoteInputs();renderTally();var cb=document.getElementById('closePollBtn');if(cb)cb.addEventListener('click',handleClosePoll);}
