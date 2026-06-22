@@ -512,7 +512,14 @@ function isQuestioner(){return currentUser&&currentUser.role==='출제자';}
 function isPlayer(){return currentUser&&currentUser.role==='참가자';}
 function canVoteOn(poll){if(!currentUser)return false;if(poll.type==='score')return isJudge();return poll.voterRole==='전체'||poll.voterRole===currentUser.role;}
 function canCreateScorePoll(){return isJudge();}
-function canClosePoll(){return isJudge();}
+function canClosePoll(){
+  var poll=appState.activePoll;
+  if(!poll) return false;
+  // 질문 합의(qagree), 정답 제출 합의(submission) 투표는 출제자가 마감
+  if(poll.preset==='qagree'||poll.preset==='submission') return isQuestioner();
+  // 나머지(점수 평가, 찬반 등)는 평가자가 마감
+  return isJudge();
+}
 function isChief(){return currentUser&&appState.chiefId&&appState.chiefId===currentUser.id;}
 
 /* ===== pending counts ===== */
@@ -1571,10 +1578,7 @@ if(!compact){
   if(a.objectionAcceptReason){
     html+='<div class="a-reason green">✅ 이의 인용 사유: '+escapeHtml(a.objectionAcceptReason)+'</div>';
   }
-  // ← 이의제기 기각 사유 표시
-  if(a.objectionDenyReason){
-    html+='<div class="a-reason">❌ 이의 기각 사유: '+escapeHtml(a.objectionDenyReason)+'</div>';
-  }
+
 
 
     if(a.status==='pending'){
@@ -1612,6 +1616,10 @@ if(!compact){
   // 거부 사유 — compact 여부와 무관하게 항상 표시
   if(a.rejectReason){
     html+='<div class="a-reason" style="margin-top:8px;margin-bottom:4px;">⛔ <strong>거부 사유:</strong> '+escapeHtml(a.rejectReason)+'</div>';
+  }
+  // 이의제기 기각 사유 — compact 여부와 무관하게 항상 표시
+  if(a.objectionDenyReason){
+    html+='<div class="a-reason" style="margin-top:8px;margin-bottom:4px;">❌ <strong>이의 기각 사유:</strong> '+escapeHtml(a.objectionDenyReason)+'</div>';
   }
   // 출제자: 거부된 경우 이의제기 또는 재제출
   if(isQuestioner() && a.status==='rejected'){
@@ -1775,18 +1783,6 @@ function attachApprovalEvents(box, aps){
       var ap=aps.find(function(a){return a.id===id;});if(!ap)return;
       ap.status='rejected';ap.rejectReason=reason||'(사유 없음)';ap.reviewedBy=currentUser.id;ap.reviewedAt=Date.now();
       await saveApproval(ap);
-      // ← 거부 사유를 출제자에게 명시적으로 보이도록 별도 공지 생성
-      try{
-        await createApprovalWithLog({
-          type:'question',
-          title:'⛔ [거부 통보] '+ap.title,
-          body:'귀하의 제출이 거부되었습니다.\n\n거부 사유: '+(reason||'(사유 없음)'),
-          authorId:currentUser.id,
-          authorName:currentUser.name,
-          isNotice:false,
-          relatedId:ap.id
-        });
-      }catch(e){console.error('reject notify failed',e);}
       
       // ← 질문 반려 거부: type이 'questionReject'이면 질문을 pending으로 복원
       if(ap.type==='questionReject' && ap.relatedQuestionId){
