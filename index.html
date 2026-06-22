@@ -1552,10 +1552,6 @@ if(!compact){
     }
 }
 
-  // 거부 사유 표시
-  if(a.rejectReason){
-    html+='<div class="a-reason">⛔ 거부 사유: '+escapeHtml(a.rejectReason)+'</div>';
-  }
   // 이의제기 내용 표시
   if(a.objectionBody){
     html+='<div class="a-objection">⚖ 이의제기 ('+escapeHtml(a.objectorName||'?')+'): '+escapeHtml(a.objectionBody)+'</div>';
@@ -1606,6 +1602,10 @@ if(!compact){
     }
   }
 
+  // 거부 사유 — compact 여부와 무관하게 항상 표시
+  if(a.rejectReason){
+    html+='<div class="a-reason" style="margin-top:8px;margin-bottom:4px;">⛔ <strong>거부 사유:</strong> '+escapeHtml(a.rejectReason)+'</div>';
+  }
   // 출제자: 거부된 경우 이의제기 또는 재제출
   if(isQuestioner() && a.status==='rejected'){
     html+='<div style="margin-top:8px;">'+
