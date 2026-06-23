@@ -209,6 +209,34 @@ fieldset.role-pick legend{font-size:12.5px;font-weight:700;margin-bottom:8px;pad
 
 footer.legal-footnote{max-width:560px;margin:36px auto 0;padding:0 16px 28px;font-size:10.5px;color:var(--text-soft-onink);line-height:1.6;text-align:center;}
 
+/* ---- admin panel ---- */
+.admin-panel-shell{min-height:100vh;background:var(--ink-bg);color:var(--text-onink);}
+.admin-panel-header{max-width:680px;margin:0 auto;padding:22px 16px 16px;border-bottom:1px solid rgba(184,146,63,0.35);display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.admin-panel-header h1{font-family:'Nanum Myeongjo',serif;font-size:20px;font-weight:800;margin:0;color:var(--gold);}
+.admin-panel-body{max-width:680px;margin:0 auto;padding:20px 16px 80px;}
+.admin-section{margin-bottom:28px;}
+.admin-section-title{font-family:'Nanum Myeongjo',serif;font-size:15px;font-weight:700;color:var(--gold);border-bottom:1px solid rgba(184,146,63,0.25);padding-bottom:8px;margin-bottom:14px;}
+.admin-card{background:var(--ink-bg-2);border:1px solid rgba(184,146,63,0.25);border-radius:12px;padding:16px;margin-bottom:10px;}
+.room-card{background:var(--ink-bg-2);border:1px solid rgba(184,146,63,0.25);border-radius:12px;padding:14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.room-card .room-info .room-name{font-size:14px;font-weight:700;color:var(--text-onink);}
+.room-card .room-info .room-meta{font-size:11.5px;color:var(--text-soft-onink);margin-top:3px;font-family:'IBM Plex Mono',monospace;}
+.room-card .room-actions{display:flex;gap:6px;flex-shrink:0;}
+.room-badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:999px;font-family:'IBM Plex Mono',monospace;font-weight:700;}
+.room-badge.common{background:rgba(184,146,63,0.2);color:var(--gold);border:1px solid rgba(184,146,63,0.4);}
+.room-badge.custom{background:rgba(46,108,94,0.2);color:#9fd8c6;border:1px solid rgba(46,108,94,0.4);}
+
+/* ---- gear button on join ---- */
+.admin-gear-btn{position:fixed;bottom:18px;right:18px;width:36px;height:36px;border-radius:50%;background:rgba(22,34,45,0.85);border:1px solid rgba(184,146,63,0.25);color:rgba(184,146,63,0.4);font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:color .2s,border-color .2s;z-index:100;}
+.admin-gear-btn:hover{color:var(--gold);border-color:rgba(184,146,63,0.6);}
+
+/* ---- admin auth modal ---- */
+.admin-auth-modal{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
+.admin-auth-box2{background:var(--ink-bg-2);border:1px solid rgba(184,146,63,0.4);border-radius:16px;width:100%;max-width:360px;padding:28px 24px;}
+.admin-auth-box2 h2{font-family:'Nanum Myeongjo',serif;font-size:18px;margin:0 0 6px;color:var(--gold);}
+.admin-auth-box2 p{font-size:12.5px;color:var(--text-soft-onink);margin:0 0 18px;}
+.admin-auth-box2 input{width:100%;padding:10px 12px;border-radius:9px;border:1.5px solid rgba(184,146,63,0.3);background:var(--ink-bg);color:var(--text-onink);font-size:14px;margin-bottom:10px;}
+.admin-auth-error{font-size:12px;color:var(--stamp-red);margin-bottom:8px;min-height:16px;}
+
 /* ---- admin / role tags ---- */
 .role-tag.admin{background:rgba(184,146,63,0.3);color:#f0d080;border:1px solid rgba(184,146,63,0.6);}
 .role-tag.room-admin{background:rgba(74,58,122,0.35);color:#d4c8f0;border:1px solid rgba(74,58,122,0.55);}
@@ -810,6 +838,509 @@ function isChief(){return currentUser&&appState.chiefId&&appState.chiefId===curr
 function pendingApprovalCount(){return appState.approvals.filter(function(a){return a.status==='pending';}).length;}
 function pendingQuestionCount(){return appState.questions.filter(function(q){return q.status==='pending';}).length;}
 
+/* ===== 관리자 전용 패널 ===== */
+var _adminPanelAuthed = false; // 관리자 패널 세션 인증 상태
+
+function showAdminAuthModal(){
+  var existing=document.getElementById('adminAuthModal');
+  if(existing) existing.remove();
+
+  var modal=document.createElement('div');
+  modal.id='adminAuthModal';
+  modal.className='admin-auth-modal';
+  modal.innerHTML=
+    '<div class="admin-auth-box2">'+
+      '<h2>⚙ 관리자 인증</h2>'+
+      '<p>관리자 비밀번호를 입력하세요.</p>'+
+      '<input type="password" id="adminPanelPwInput" placeholder="비밀번호"/>'+
+      '<div class="admin-auth-error" id="adminPanelPwError"></div>'+
+      '<div style="display:flex;gap:8px;">'+
+        '<button id="adminPanelPwOk" class="btn btn-primary" style="flex:1;">확인</button>'+
+        '<button id="adminPanelPwCancel" class="btn btn-ghost" style="flex:0 0 auto;width:auto;padding:11px 14px;">취소</button>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(modal);
+
+  var input=document.getElementById('adminPanelPwInput');
+  var errEl=document.getElementById('adminPanelPwError');
+
+  input.focus();
+
+  async function tryAuth(){
+    var pw=input.value;
+    if(!pw){errEl.textContent='비밀번호를 입력하세요.';return;}
+    errEl.textContent='확인 중...';
+    var storedHash=await fetchAdminPwHash();
+    if(!storedHash){
+      // 비밀번호 미설정 시 최초 등록
+      errEl.textContent='';
+      modal.remove();
+      showAdminPwSetupModal();
+      return;
+    }
+    var ok=await verifyAdminPw(pw);
+    if(ok){
+      _adminPanelAuthed=true;
+      _adminAuthedSession=true;
+      modal.remove();
+      renderAdminPanel();
+    } else {
+      errEl.textContent='비밀번호가 올바르지 않습니다.';
+      input.value='';
+      input.focus();
+    }
+  }
+
+  document.getElementById('adminPanelPwOk').addEventListener('click', tryAuth);
+  input.addEventListener('keydown', function(e){ if(e.key==='Enter') tryAuth(); });
+  document.getElementById('adminPanelPwCancel').addEventListener('click', function(){ modal.remove(); });
+  modal.addEventListener('click', function(e){ if(e.target===modal) modal.remove(); });
+}
+
+function showAdminPwSetupModal(){
+  var existing=document.getElementById('adminAuthModal');
+  if(existing) existing.remove();
+
+  var modal=document.createElement('div');
+  modal.id='adminAuthModal';
+  modal.className='admin-auth-modal';
+  modal.innerHTML=
+    '<div class="admin-auth-box2">'+
+      '<h2>⚙ 관리자 비밀번호 설정</h2>'+
+      '<p>처음 사용합니다. 관리자 비밀번호를 등록하세요.</p>'+
+      '<input type="password" id="adminSetPw1" placeholder="비밀번호"/>'+
+      '<input type="password" id="adminSetPw2" placeholder="비밀번호 확인"/>'+
+      '<div class="admin-auth-error" id="adminSetPwError"></div>'+
+      '<div style="display:flex;gap:8px;">'+
+        '<button id="adminSetPwOk" class="btn btn-primary" style="flex:1;">등록</button>'+
+        '<button id="adminSetPwCancel" class="btn btn-ghost" style="flex:0 0 auto;width:auto;padding:11px 14px;">취소</button>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(modal);
+
+  var errEl=document.getElementById('adminSetPwError');
+  document.getElementById('adminSetPwOk').addEventListener('click', async function(){
+    var pw1=document.getElementById('adminSetPw1').value;
+    var pw2=document.getElementById('adminSetPw2').value;
+    if(!pw1){errEl.textContent='비밀번호를 입력하세요.';return;}
+    if(pw1!==pw2){errEl.textContent='비밀번호가 일치하지 않습니다.';return;}
+    if(pw1.length<4){errEl.textContent='4자 이상 입력하세요.';return;}
+    errEl.textContent='저장 중...';
+    try{
+      await saveAdminPwHash(pw1);
+      _adminPanelAuthed=true;
+      _adminAuthedSession=true;
+      modal.remove();
+      renderAdminPanel();
+    }catch(e){errEl.textContent='저장 실패: '+String(e);}
+  });
+  document.getElementById('adminSetPwCancel').addEventListener('click', function(){ modal.remove(); });
+  modal.addEventListener('click', function(e){ if(e.target===modal) modal.remove(); });
+}
+
+/* ===== 관리자 패널 메인 화면 ===== */
+function renderAdminPanel(){
+  var root=document.getElementById('app');
+  if(!root) return;
+
+  root.innerHTML=
+    '<div class="admin-panel-shell">'+
+      '<header class="admin-panel-header">'+
+        '<div style="display:flex;align-items:center;gap:12px;">'+
+          '<div class="brandmark" style="width:40px;">'+brandIcon()+'</div>'+
+          '<div>'+
+            '<h1>관리자 패널</h1>'+
+            '<div style="font-size:11.5px;color:var(--text-soft-onink);margin-top:2px;font-family:\'IBM Plex Mono\',monospace;">바다거북스프 평결부 · ADMIN</div>'+
+          '</div>'+
+        '</div>'+
+        '<button id="adminPanelExitBtn" class="btn btn-ghost btn-sm" style="white-space:nowrap;">← 나가기</button>'+
+      '</header>'+
+      '<div class="admin-panel-body" id="adminPanelBody"></div>'+
+    '</div>';
+
+  document.getElementById('adminPanelExitBtn').addEventListener('click', function(){
+    _adminPanelAuthed=false;
+    _adminAuthedSession=false;
+    renderJoin();
+  });
+
+  renderAdminPanelBody();
+}
+
+async function renderAdminPanelBody(){
+  var body=document.getElementById('adminPanelBody');
+  if(!body) return;
+
+  body.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-soft-onink);">불러오는 중...</div>';
+
+  // 데이터 로드
+  var roster=await fetchRoster();
+  var rooms=await fetchRooms();
+  var roomClosed=await fetchRoomClosed();
+  var roomSettings=await fetchRoomSettings();
+
+  var html='';
+
+  // ---- 방 목록 ----
+  html+='<div class="admin-section">'+
+    '<div class="admin-section-title">🚪 방 관리</div>';
+
+  // 공통방
+  html+='<div class="room-card">'+
+    '<div class="room-info">'+
+      '<div class="room-name">공통방 <span class="room-badge common">기본</span></div>'+
+      '<div class="room-meta">항상 존재 · 삭제·이름 변경 불가</div>'+
+    '</div>'+
+    '<div class="room-actions">'+
+      '<span class="status-pill '+(roomClosed?'closed':'open')+'" style="font-size:10px;">'+(roomClosed?'🚫 폐쇄':'✅ 운영')+'</span>'+
+      '<button class="btn btn-sm btn-secondary" id="adminGoCommonRoom">입장</button>'+
+    '</div>'+
+  '</div>';
+
+  // 커스텀 방 목록
+  rooms.forEach(function(room){
+    html+='<div class="room-card" data-rid="'+escapeHtml(room.id)+'">'+
+      '<div class="room-info">'+
+        '<div class="room-name">'+escapeHtml(room.name)+' <span class="room-badge custom">방</span></div>'+
+        '<div class="room-meta">'+escapeHtml(room.code||'')+(room.desc?' · '+escapeHtml(room.desc):'')+' · 생성: '+timeAgo(room.createdAt)+'</div>'+
+      '</div>'+
+      '<div class="room-actions">'+
+        '<button class="btn btn-sm btn-danger admin-delete-room" data-rid="'+escapeHtml(room.id)+'" data-rname="'+escapeHtml(room.name)+'">삭제</button>'+
+      '</div>'+
+    '</div>';
+  });
+
+  if(rooms.length===0){
+    html+='<div class="card empty" style="background:transparent;border-color:rgba(184,146,63,0.2);color:var(--text-soft-onink);">생성된 방이 없습니다.</div>';
+  }
+
+  // 방 생성 폼
+  html+='<div class="admin-card" style="margin-top:14px;">'+
+    '<div style="font-size:13px;font-weight:700;color:var(--text-onink);margin-bottom:12px;">➕ 새 방 생성</div>'+
+    '<div class="field"><label style="color:var(--text-onink);">방 이름</label><input type="text" id="newRoomName" maxlength="20" placeholder="예: 대회방" style="background:var(--ink-bg);color:var(--text-onink);border-color:rgba(184,146,63,0.3);"/></div>'+
+    '<div class="field"><label style="color:var(--text-onink);">방 코드 (선택)</label><input type="text" id="newRoomCode" maxlength="10" placeholder="예: EVENT01" style="background:var(--ink-bg);color:var(--text-onink);border-color:rgba(184,146,63,0.3);"/></div>'+
+    '<div class="field"><label style="color:var(--text-onink);">설명 (선택)</label><input type="text" id="newRoomDesc" maxlength="40" placeholder="방에 대한 간단한 설명" style="background:var(--ink-bg);color:var(--text-onink);border-color:rgba(184,146,63,0.3);"/></div>'+
+    '<button id="createRoomBtn" class="btn btn-primary btn-sm">방 생성</button>'+
+  '</div>'+
+  '</div>';
+
+  // ---- 공통방 설정 ----
+  html+='<div class="admin-section">'+
+    '<div class="admin-section-title">⚙ 공통방 설정</div>'+
+    '<div class="admin-card">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'+
+        '<span style="font-size:13px;font-weight:600;color:var(--text-onink);">방 폐쇄</span>'+
+        '<span class="status-pill '+(roomClosed?'closed':'open')+'">'+(roomClosed?'🚫 폐쇄 중':'✅ 정상 운영')+'</span>'+
+      '</div>'+
+      '<div class="btn-row">'+
+        (roomClosed?
+          '<button id="adminRoomOpenBtn" class="btn btn-approve btn-sm">방 재개</button>'
+          :'<button id="adminRoomCloseBtn" class="btn btn-danger btn-sm">방 폐쇄</button>')+
+      '</div>'+
+    '</div>';
+
+  // 강제 설정
+  var FORCE_SETTINGS=[
+    {key:'autoRemove',label:'창 닫을 때 자동 미참여'},
+    {key:'allowSpectator',label:'관전자 허용'},
+    {key:'allowQuestion',label:'질문 허용'},
+    {key:'allowVote',label:'투표 허용'},
+    {key:'allowAnswer',label:'정답 제출 허용'},
+    {key:'allowChat',label:'채팅 허용'}
+  ];
+  html+='<div class="admin-card" style="margin-top:10px;">'+
+    '<div style="font-size:13px;font-weight:700;color:var(--text-onink);margin-bottom:12px;">설정 강제 잠금</div>';
+  FORCE_SETTINGS.forEach(function(cfg){
+    var state=getSettingState(roomSettings,cfg.key);
+    html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;">'+
+      '<span style="font-size:12.5px;color:var(--text-onink);">'+escapeHtml(cfg.label)+'</span>'+
+      '<div style="display:flex;gap:5px;">'+
+        '<button class="btn-extend admin-panel-force-btn" data-key="'+escapeHtml(cfg.key)+'" data-val="user" style="font-size:11px;'+(state==='user'?'background:var(--teal);color:#fff;border-color:var(--teal);':'')+'" >자유</button>'+
+        '<button class="btn-extend admin-panel-force-btn" data-key="'+escapeHtml(cfg.key)+'" data-val="force_on" style="font-size:11px;'+(state==='force_on'?'background:var(--gold);color:var(--ink-bg);border-color:var(--gold);':'')+'" >🔒ON</button>'+
+        '<button class="btn-extend admin-panel-force-btn" data-key="'+escapeHtml(cfg.key)+'" data-val="force_off" style="font-size:11px;'+(state==='force_off'?'background:var(--stamp-red);color:#fff;border-color:var(--stamp-red);':'')+'" >🔒OFF</button>'+
+      '</div>'+
+    '</div>';
+  });
+  html+='</div></div>';
+
+  // ---- 참여자 관리 ----
+  html+='<div class="admin-section">'+
+    '<div class="admin-section-title">👥 참여자 관리</div>'+
+    '<div class="admin-card">'+
+      '<div style="font-size:13px;font-weight:700;color:var(--text-onink);margin-bottom:10px;">역할 변경</div>'+
+      '<div class="field"><label style="color:var(--text-onink);">대상</label>'+
+        '<select id="adminPanelRoleTarget" style="background:var(--ink-bg);color:var(--text-onink);border-color:rgba(184,146,63,0.3);">'+
+          roster.map(function(r){return'<option value="'+escapeHtml(r.id)+'">'+escapeHtml(r.name)+' ('+escapeHtml(r.role)+')</option>';}).join('')+
+        '</select></div>'+
+      '<div class="field"><label style="color:var(--text-onink);">새 역할</label>'+
+        '<select id="adminPanelRoleValue" style="background:var(--ink-bg);color:var(--text-onink);border-color:rgba(184,146,63,0.3);">'+
+          ['평가자','출제자','참가자','관전자','방관리자'].map(function(r){return'<option value="'+r+'">'+r+'</option>';}).join('')+
+        '</select></div>'+
+      '<button id="adminPanelAssignRoleBtn" class="btn btn-primary btn-sm">역할 지정</button>'+
+    '</div>'+
+    '<div class="admin-card" style="margin-top:10px;">'+
+      '<div style="font-size:13px;font-weight:700;color:var(--text-onink);margin-bottom:10px;">강제 퇴장</div>'+
+      '<div class="field"><label style="color:var(--text-onink);">대상</label>'+
+        '<select id="adminPanelKickTarget" style="background:var(--ink-bg);color:var(--text-onink);border-color:rgba(184,146,63,0.3);">'+
+          roster.map(function(r){return'<option value="'+escapeHtml(r.id)+'">'+escapeHtml(r.name)+' ('+escapeHtml(r.role)+')</option>';}).join('')+
+        '</select></div>'+
+      '<div class="btn-row">'+
+        '<button id="adminPanelKickBtn" class="btn btn-danger btn-sm">방출</button>'+
+        '<button id="adminPanelBanBtn" class="btn btn-danger btn-sm" style="opacity:0.7;">재입장 금지</button>'+
+      '</div>'+
+    '</div>'+
+    '<div class="admin-card" style="margin-top:10px;">'+
+      '<div style="font-size:13px;font-weight:700;color:var(--text-onink);margin-bottom:10px;">이름 강제 변경</div>'+
+      '<div class="field"><label style="color:var(--text-onink);">대상</label>'+
+        '<select id="adminPanelRenameTarget" style="background:var(--ink-bg);color:var(--text-onink);border-color:rgba(184,146,63,0.3);">'+
+          roster.map(function(r){return'<option value="'+escapeHtml(r.id)+'">'+escapeHtml(r.name)+'</option>';}).join('')+
+        '</select></div>'+
+      '<div class="field"><label style="color:var(--text-onink);">새 이름</label><input type="text" id="adminPanelNewName" maxlength="12" placeholder="새 이름" style="background:var(--ink-bg);color:var(--text-onink);border-color:rgba(184,146,63,0.3);"/></div>'+
+      '<button id="adminPanelRenameBtn" class="btn btn-primary btn-sm">이름 변경</button>'+
+    '</div>'+
+    '<div class="admin-card" style="margin-top:10px;">'+
+      '<div class="btn-row">'+
+        '<button id="adminPanelClearParticipantsBtn" class="btn btn-ghost btn-sm">모든 참여자 초기화</button>'+
+        '<button id="adminPanelClearGameBtn" class="btn btn-danger btn-sm">게임 기록 초기화</button>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+
+  // ---- 비밀번호 변경 ----
+  html+='<div class="admin-section">'+
+    '<div class="admin-section-title">🔑 관리자 비밀번호 변경</div>'+
+    '<div class="admin-card">'+
+      '<div class="field"><label style="color:var(--text-onink);">새 비밀번호</label><input type="password" id="adminChangePw1" placeholder="새 비밀번호" style="background:var(--ink-bg);color:var(--text-onink);border-color:rgba(184,146,63,0.3);"/></div>'+
+      '<div class="field"><label style="color:var(--text-onink);">확인</label><input type="password" id="adminChangePw2" placeholder="비밀번호 확인" style="background:var(--ink-bg);color:var(--text-onink);border-color:rgba(184,146,63,0.3);"/></div>'+
+      '<div class="admin-auth-error" id="adminChangePwErr"></div>'+
+      '<button id="adminChangePwBtn" class="btn btn-primary btn-sm">비밀번호 변경</button>'+
+    '</div>'+
+  '</div>';
+
+  // ---- 게임 로그 ----
+  html+='<div class="admin-section">'+
+    '<div class="admin-section-title">📋 방 로그</div>'+
+    '<button id="adminPanelLoadLogsBtn" class="btn btn-ghost btn-sm" style="margin-bottom:8px;">로그 불러오기</button>'+
+    '<div id="adminPanelLogList"></div>'+
+  '</div>';
+
+  body.innerHTML=html;
+
+  // ---- 이벤트 바인딩 ----
+
+  // 공통방 입장
+  var goCommonRoom=document.getElementById('adminGoCommonRoom');
+  if(goCommonRoom) goCommonRoom.addEventListener('click', function(){
+    // 관리자 역할로 공통방 입장
+    _adminPanelAuthed=false;
+    currentUser={id:genId(),name:'관리자',role:'관리자',joinedAt:Date.now()};
+    try{ sessionStorage.setItem('currentUser',JSON.stringify(currentUser)); }catch(e){}
+    startHeartbeat();
+    refreshAll(true);
+  });
+
+  // 방 생성
+  var createRoomBtn=document.getElementById('createRoomBtn');
+  if(createRoomBtn) createRoomBtn.addEventListener('click', async function(){
+    var name=(document.getElementById('newRoomName').value||'').trim();
+    if(!name){alert('방 이름을 입력하세요.');return;}
+    var code=(document.getElementById('newRoomCode').value||'').trim().toUpperCase();
+    var desc=(document.getElementById('newRoomDesc').value||'').trim();
+    var room={id:genId(),name:name,code:code||null,desc:desc||null,createdAt:Date.now(),createdBy:'관리자'};
+    await saveRoom(room);
+    await saveAudit('room_created',{roomId:room.id,name:room.name,code:room.code});
+    document.getElementById('newRoomName').value='';
+    document.getElementById('newRoomCode').value='';
+    document.getElementById('newRoomDesc').value='';
+    renderAdminPanelBody();
+  });
+
+  // 방 삭제
+  body.querySelectorAll('.admin-delete-room').forEach(function(btn){
+    btn.addEventListener('click', async function(){
+      var rid=btn.getAttribute('data-rid');
+      var rname=btn.getAttribute('data-rname');
+      if(!confirm('"'+rname+'" 방을 삭제합니까? 복구되지 않습니다.'))return;
+      await deleteRoom(rid);
+      await saveAudit('room_deleted',{roomId:rid,name:rname});
+      renderAdminPanelBody();
+    });
+  });
+
+  // 방 폐쇄/재개
+  var roomCloseBtn=document.getElementById('adminRoomCloseBtn');
+  if(roomCloseBtn) roomCloseBtn.addEventListener('click', async function(){
+    if(!confirm('공통방을 폐쇄합니까?'))return;
+    await saveRoomClosed(true);
+    await addRoomLog('방 폐쇄','관리자 패널에서 폐쇄됨');
+    renderAdminPanelBody();
+  });
+  var roomOpenBtn=document.getElementById('adminRoomOpenBtn');
+  if(roomOpenBtn) roomOpenBtn.addEventListener('click', async function(){
+    await saveRoomClosed(false);
+    await addRoomLog('방 재개','관리자 패널에서 재개됨');
+    renderAdminPanelBody();
+  });
+
+  // 강제 설정
+  body.querySelectorAll('.admin-panel-force-btn').forEach(function(btn){
+    btn.addEventListener('click', async function(){
+      var key=btn.getAttribute('data-key');
+      var val=btn.getAttribute('data-val');
+      var ns=Object.assign({},roomSettings);
+      ns[key]=val;
+      await saveRoomSettings(ns);
+      await addRoomLog('설정 강제 변경',key+' → '+val);
+      renderAdminPanelBody();
+    });
+  });
+
+  // 역할 지정
+  var assignRoleBtn=document.getElementById('adminPanelAssignRoleBtn');
+  if(assignRoleBtn) assignRoleBtn.addEventListener('click', async function(){
+    var target=document.getElementById('adminPanelRoleTarget');
+    var roleVal=document.getElementById('adminPanelRoleValue');
+    if(!target||!target.value||!roleVal)return;
+    var id=target.value;
+    var newRole=roleVal.value;
+    var person=roster.find(function(r){return r.id===id;});
+    if(!person){alert('참여자를 찾을 수 없습니다.');return;}
+    var oldRole=person.role;
+    person.role=newRole;
+    await storageSet('participant:'+id,JSON.stringify(person));
+    await addRoomLog('역할 변경',escapeHtml(person.name)+': '+oldRole+' → '+newRole);
+    await saveAudit('role_changed',{targetId:id,oldRole:oldRole,newRole:newRole,by:'관리자패널'});
+    alert(person.name+'의 역할을 '+newRole+'(으)로 변경했습니다.');
+    renderAdminPanelBody();
+  });
+
+  // 강제 퇴장
+  var kickBtn=document.getElementById('adminPanelKickBtn');
+  if(kickBtn) kickBtn.addEventListener('click', async function(){
+    var target=document.getElementById('adminPanelKickTarget');
+    if(!target||!target.value)return;
+    var id=target.value;
+    var person=roster.find(function(r){return r.id===id;});
+    if(!confirm((person?person.name:id)+'을(를) 방출합니까?'))return;
+    await storageDelete('participant:'+id);
+    try{remove(ref(db,'participants/'+id));}catch(e){}
+    await addRoomLog('강제 퇴장',escapeHtml(person?person.name:id)+' 방출됨');
+    await saveAudit('participant_kicked',{targetId:id,targetName:person?person.name:'?',by:'관리자패널'});
+    alert('방출 완료.');
+    renderAdminPanelBody();
+  });
+
+  var banBtn=document.getElementById('adminPanelBanBtn');
+  if(banBtn) banBtn.addEventListener('click', async function(){
+    var target=document.getElementById('adminPanelKickTarget');
+    if(!target||!target.value)return;
+    var id=target.value;
+    var person=roster.find(function(r){return r.id===id;});
+    if(!confirm((person?person.name:id)+'을(를) 재입장 금지합니까?'))return;
+    await storageDelete('participant:'+id);
+    await storageSet('banned:'+id,'true');
+    try{remove(ref(db,'participants/'+id));}catch(e){}
+    await addRoomLog('재입장 금지',escapeHtml(person?person.name:id)+' 금지됨');
+    await saveAudit('participant_banned',{targetId:id,targetName:person?person.name:'?',by:'관리자패널'});
+    alert('재입장 금지 완료.');
+    renderAdminPanelBody();
+  });
+
+  // 이름 변경
+  var renameBtn=document.getElementById('adminPanelRenameBtn');
+  if(renameBtn) renameBtn.addEventListener('click', async function(){
+    var target=document.getElementById('adminPanelRenameTarget');
+    var newNameEl=document.getElementById('adminPanelNewName');
+    if(!target||!target.value||!newNameEl)return;
+    var id=target.value;
+    var newName=newNameEl.value.trim();
+    if(!newName){alert('새 이름을 입력하세요.');return;}
+    var person=roster.find(function(r){return r.id===id;});
+    if(!person)return;
+    var oldName=person.name;
+    person.name=newName;
+    await storageSet('participant:'+id,JSON.stringify(person));
+    await addRoomLog('이름 변경',oldName+' → '+newName);
+    await saveAudit('name_changed',{targetId:id,oldName:oldName,newName:newName,by:'관리자패널'});
+    alert('이름을 변경했습니다.');
+    renderAdminPanelBody();
+  });
+
+  // 참여자 초기화
+  var clearPBtn=document.getElementById('adminPanelClearParticipantsBtn');
+  if(clearPBtn) clearPBtn.addEventListener('click', async function(){
+    if(!confirm('모든 참여자를 초기화합니까?'))return;
+    await clearAllParticipants();
+    alert('참여자 초기화 완료.');
+    renderAdminPanelBody();
+  });
+
+  // 게임 기록 초기화
+  var clearGBtn=document.getElementById('adminPanelClearGameBtn');
+  if(clearGBtn) clearGBtn.addEventListener('click', async function(){
+    if(!confirm('게임 기록을 보관하고 삭제합니까?'))return;
+    var res=await archiveAndClearGameRecords();
+    if(res.ok) alert('초기화 완료. 보관키: '+res.archive);
+    else alert('초기화 실패: '+(res.error||''));
+    renderAdminPanelBody();
+  });
+
+  // 비밀번호 변경
+  var changePwBtn=document.getElementById('adminChangePwBtn');
+  if(changePwBtn) changePwBtn.addEventListener('click', async function(){
+    var pw1=document.getElementById('adminChangePw1').value;
+    var pw2=document.getElementById('adminChangePw2').value;
+    var errEl=document.getElementById('adminChangePwErr');
+    if(!pw1){errEl.textContent='비밀번호를 입력하세요.';return;}
+    if(pw1!==pw2){errEl.textContent='비밀번호가 일치하지 않습니다.';return;}
+    if(pw1.length<4){errEl.textContent='4자 이상 입력하세요.';return;}
+    errEl.textContent='저장 중...';
+    try{
+      await saveAdminPwHash(pw1);
+      errEl.style.color='var(--teal)';
+      errEl.textContent='✅ 비밀번호가 변경되었습니다.';
+      document.getElementById('adminChangePw1').value='';
+      document.getElementById('adminChangePw2').value='';
+    }catch(e){errEl.textContent='저장 실패: '+String(e);}
+  });
+
+  // 로그
+  var loadLogsBtn=document.getElementById('adminPanelLoadLogsBtn');
+  if(loadLogsBtn) loadLogsBtn.addEventListener('click', async function(){
+    loadLogsBtn.textContent='불러오는 중...';
+    loadLogsBtn.disabled=true;
+    var logs=await fetchRoomLogs();
+    var logBox=document.getElementById('adminPanelLogList');
+    if(!logBox){loadLogsBtn.disabled=false;return;}
+    if(!logs||logs.length===0){logBox.innerHTML='<div class="admin-card" style="text-align:center;font-size:13px;color:var(--text-soft-onink);">로그가 없습니다.</div>';loadLogsBtn.disabled=false;loadLogsBtn.textContent='새로고침';return;}
+    logBox.innerHTML=logs.slice(0,50).map(function(l){
+      return'<div class="log-item">'+
+        '<div class="log-time">'+new Date(l.ts).toLocaleString('ko-KR')+' · '+escapeHtml(l.actor||'?')+'</div>'+
+        '<div class="log-action">'+escapeHtml(l.action)+'</div>'+
+        (l.detail?'<div class="log-detail">'+escapeHtml(l.detail)+'</div>':'')+
+      '</div>';
+    }).join('');
+    loadLogsBtn.disabled=false;
+    loadLogsBtn.textContent='새로고침';
+  });
+}
+
+/* ===== 방(Room) 데이터 레이어 ===== */
+async function fetchRooms(){
+  var keys=await storageList('room:');
+  var rows=await Promise.all(keys.map(async function(k){
+    var v=await storageGet(k);
+    return safeParse(v,null);
+  }));
+  return rows.filter(Boolean).sort(function(a,b){return a.createdAt-b.createdAt;});
+}
+async function saveRoom(room){
+  await storageSet('room:'+room.id, JSON.stringify(room));
+}
+async function deleteRoom(roomId){
+  await storageDelete('room:'+roomId);
+}
+
 /* ===== render: join ===== */
 function renderJoin(){
   appState._suspendRender=false;
@@ -834,13 +1365,17 @@ function renderJoin(){
         '<button type="submit" class="btn btn-primary">참여하기</button>'+
       '</form>'+
       '<p class="share-hint">이 화면의 링크를 다른 참여자에게 공유하세요. 같은 링크를 열면 같은 투표함을 공유합니다.</p>'+
-    '</div></div>';
+    '</div></div>'+
+    '<button id="adminGearBtn" class="admin-gear-btn" title="관리자" type="button">⚙</button>';
   document.getElementById('joinForm').addEventListener('submit',async function(e){
     e.preventDefault();
     var name=document.getElementById('joinName').value.trim();
     if(!name)return;
     var role=document.querySelector('input[name=role]:checked').value;
     await registerParticipant(name,role);
+  });
+  document.getElementById('adminGearBtn').addEventListener('click',function(){
+    showAdminAuthModal();
   });
 }
 async function registerParticipant(name,role){
