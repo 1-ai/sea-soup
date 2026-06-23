@@ -739,6 +739,8 @@ currentUser={
   role:role,
   joinedAt:joinedAt
 };
+  // sessionStorage에 저장 → 같은 탭 새로고침 시 세션 유지, 탭/창 닫으면 자동 소멸
+  try{ sessionStorage.setItem('currentUser', JSON.stringify(currentUser)); }catch(e){}
   await storageSet(
   'participant:'+id,
   JSON.stringify({
@@ -761,7 +763,11 @@ currentUser={
   await refreshAll(true);
 }
 async function leaveAndRejoin(){
-  if(currentUser){await storageDelete('participant:'+currentUser.id);}
+  if(currentUser){
+    await storageDelete('participant:'+currentUser.id);
+    try{ remove(ref(db,'participants/'+currentUser.id)); }catch(e){}
+  }
+  try{ sessionStorage.removeItem('currentUser'); }catch(e){}
   currentUser=null;
   if(heartbeatTimer){clearInterval(heartbeatTimer);heartbeatTimer=null;}
   composerOpen=false;
@@ -2791,22 +2797,33 @@ try{
 }catch(e){console.error('onValue setup failed',e);} 
 
 // 창 닫을 때 자동 처리 (설정 기반): 미참여로 전환 및 게임 기록 초기화 시도
-// Note: 'unload' may be disallowed by Permissions Policy in some embeds/browsers.
-// Use 'pagehide' and 'visibilitychange' (hidden) which are allowed and more reliable.
-function handlePageClose(e){
+// pagehide: 탭/창 닫기, 새로고침, 네비게이션 모두 발동 (가장 신뢰할 수 있는 이벤트)
+// visibilitychange=hidden: 탭 전환, 다른 창 포커스 시에도 발동 → 너무 공격적이므로
+//   autoRemoveOnClose가 ON일 때만 처리하고, pagehide에서도 중복 처리
+var _pageCloseFired = false;
+function handlePageClose(isPagehide){
   try{
     if(!currentUser) return;
+    // visibilitychange는 탭 전환에도 발동되므로 pagehide만 신뢰
+    // autoRemoveOnClose 설정 확인
     var auto = (window.localStorage && window.localStorage.getItem('setting:autoRemoveOnClose')==='true');
     var clearGame = (window.localStorage && window.localStorage.getItem('setting:clearGameOnLeave')==='true');
-    if(auto){
-      // best-effort synchronous local cleanup
-      try{ if(window.localStorage) window.localStorage.removeItem('participant:'+currentUser.id); }catch(err){}
-      // best-effort async cleanup (do not await; may not complete during unload)
+
+    if(auto && isPagehide){
+      // sessionStorage 삭제 → 재오픈 시 인증 상태 소멸
+      try{ sessionStorage.removeItem('currentUser'); }catch(err){}
+      // Firebase REST API로 sendBeacon 전송 (unload 중에도 신뢰할 수 있음)
+      try{
+        var dbUrl='https://seaturtle-7512b-default-rtdb.asia-southeast1.firebasedatabase.app/participants/'+currentUser.id+'.json';
+        var blob=new Blob(['null'],{type:'application/json'});
+        navigator.sendBeacon(dbUrl+'?x-http-method-override=DELETE', blob);
+      }catch(err){}
+      // 일반 async cleanup도 병행 (완료를 기다리지 않음)
       try{ storageDelete('participant:'+currentUser.id); }catch(err){}
       try{ remove(ref(db,'participants/'+currentUser.id)); }catch(err){}
       try{ saveAudit('participant_left',{participantId:currentUser.id,name:currentUser.name}); }catch(err){}
     }
-    if(clearGame){
+    if(clearGame && isPagehide){
       try{ archiveAndClearGameRecords(); }catch(err){}
     }
   }catch(e){console.error('page close handler',e);}  
@@ -2814,12 +2831,45 @@ function handlePageClose(e){
 
 // attach handlers
 try{
-  window.addEventListener('pagehide', handlePageClose, false);
-  document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='hidden') handlePageClose(); });
-}catch(e){console.error('attach page close handlers failed',e);} 
+  window.addEventListener('pagehide', function(){ handlePageClose(true); }, false);
+  // visibilitychange는 탭 전환에도 발동되므로 제거 (pagehide로 충분)
+}catch(e){console.error('attach page close handlers failed',e);}
 
-renderJoin();
-startCountdownTicker();
+// ===== 부팅 시 sessionStorage에서 인증 상태 복원 =====
+// autoRemoveOnClose가 OFF면 세션 복원, ON이면 sessionStorage는 pagehide에서 지워지므로
+// 재오픈 시 null이 돼 로그인 화면으로 이동 (의도한 동작)
+async function tryRestoreSession(){
+  try{
+    var saved = sessionStorage.getItem('currentUser');
+    if(!saved) return false;
+    var u = JSON.parse(saved);
+    if(!u || !u.id || !u.name || !u.role) return false;
+    // Firebase에서 participant 데이터가 실제로 존재하는지 확인
+    var existing = await storageGet('participant:'+u.id);
+    if(!existing) {
+      // 데이터가 이미 삭제됐으면 세션 초기화
+      try{ sessionStorage.removeItem('currentUser'); }catch(e){}
+      return false;
+    }
+    currentUser = u;
+    // lastSeen 갱신
+    var data = safeParse(existing, {});
+    data.lastSeen = Date.now();
+    await storageSet('participant:'+u.id, JSON.stringify(data));
+    return true;
+  }catch(e){ return false; }
+}
+
+(async function boot(){
+  var restored = await tryRestoreSession();
+  if(restored){
+    startHeartbeat();
+    await refreshAll(true);
+  } else {
+    renderJoin();
+  }
+  startCountdownTicker();
+})();
 </script>
 </body>
 </html>
