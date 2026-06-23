@@ -487,44 +487,35 @@ async function clearAllParticipants(){
 
 
 /* ===== archive manager UI ===== */
-// 관리자 비밀번호: Firebase에 'admin_pw_hash' 키로 저장
-// 세션 내 인증 상태는 메모리 변수로만 유지 (localStorage 미사용)
-var _adminAuthedSession=false; // 현재 세션 인증 여부
-
+// 관리자 비밀번호는 localStorage에 저장 (세션 유지)
+var ADMIN_PW_KEY='adminPw';
+function getAdminPw(){try{return window.localStorage.getItem(ADMIN_PW_KEY)||'';}catch(e){return '';}}
+function setAdminPw(pw){try{window.localStorage.setItem(ADMIN_PW_KEY,pw);}catch(e){}}
+function isAdminAuthed(){
+  var pw=getAdminPw();
+  // 비밀번호가 설정되어 있지 않으면 최초 설정 필요
+  var stored=null;
+  try{stored=window.localStorage.getItem('adminPwHash');}catch(e){}
+  if(!stored) return false;
+  return simpleHash(pw)===stored;
+}
 function simpleHash(s){
   var h=5381;for(var i=0;i<s.length;i++){h=((h<<5)+h)+s.charCodeAt(i);}
   return (h>>>0).toString(16);
 }
-async function fetchAdminPwHash(){
-  try{
-    var snapshot=await get(ref(db,'admin_pw_hash'));
-    return (snapshot&&snapshot.exists())?String(snapshot.val()).trim():null;
-  }catch(e){console.error('fetchAdminPwHash fail',e);return null;}
-}
-async function saveAdminPwHash(pw){
-  try{
-    await set(ref(db,'admin_pw_hash'), simpleHash(pw));
-  }catch(e){console.error('saveAdminPwHash fail',e);throw e;}
-}
-async function verifyAdminPw(pw){
-  var stored=await fetchAdminPwHash();
-  if(!stored) return false;
-  return simpleHash(pw)===stored;
-}
-function isAdminAuthed(){ return _adminAuthedSession; }
 
-async function renderArchiveManager(keys){
+function renderArchiveManager(keys){
+  // 기존 모달 제거
   var existing=document.getElementById('archiveModal');
   if(existing) existing.remove();
 
   var authed=isAdminAuthed();
-  var storedHash=await fetchAdminPwHash();
-  var hasPw=!!storedHash;
+  var hasPw=!!(function(){try{return window.localStorage.getItem('adminPwHash');}catch(e){return null;}}());
 
   var authHtml='';
   if(!hasPw){
     authHtml='<div class="admin-auth-box">'+
-      '<p>🔑 관리자 비밀번호를 처음 설정합니다. Firebase에 저장됩니다.</p>'+
+      '<p>🔑 관리자 비밀번호를 처음 설정합니다. 삭제 기능을 사용하려면 비밀번호를 등록하세요.</p>'+
       '<input type="password" id="adminPwInput" placeholder="비밀번호 입력"/>'+
       '<input type="password" id="adminPwConfirm" placeholder="비밀번호 확인"/>'+
       '<button class="btn btn-primary btn-sm" id="adminPwSetBtn">비밀번호 등록</button>'+
@@ -536,17 +527,7 @@ async function renderArchiveManager(keys){
       '<button class="btn btn-primary btn-sm" id="adminPwAuthBtn">인증</button>'+
     '</div>';
   } else {
-    authHtml=
-      '<div style="margin-bottom:12px;font-size:12.5px;color:#9fd8c6;">✅ 관리자 인증됨 — 삭제 기능을 사용할 수 있습니다.</div>'+
-      '<details style="margin-bottom:14px;">'+
-        '<summary style="font-size:12px;color:var(--text-soft-onink);cursor:pointer;user-select:none;">🔧 비밀번호 변경</summary>'+
-        '<div class="admin-auth-box" style="margin-top:8px;">'+
-          '<p>새 비밀번호를 입력하면 Firebase에 즉시 반영됩니다.</p>'+
-          '<input type="password" id="adminPwNew" placeholder="새 비밀번호"/>'+
-          '<input type="password" id="adminPwNewConfirm" placeholder="새 비밀번호 확인"/>'+
-          '<button class="btn btn-secondary btn-sm" id="adminPwChangeBtn">비밀번호 변경</button>'+
-        '</div>'+
-      '</details>';
+    authHtml='<div style="margin-bottom:12px;font-size:12.5px;color:#9fd8c6;">✅ 관리자 인증됨 — 삭제 기능을 사용할 수 있습니다.</div>';
   }
 
   var rowsHtml=keys.map(function(k){
@@ -560,7 +541,7 @@ async function renderArchiveManager(keys){
       '</div>'+
       '<div class="arc-btns">'+
         '<button class="btn btn-secondary btn-sm arc-view-btn">열람</button>'+
-        (authed?'<button class="btn btn-danger btn-sm arc-del-btn">삭제</button>':'<button class="btn btn-ghost btn-sm" disabled style="opacity:0.4;cursor:not-allowed;">삭제</button>')+
+        (authed?'<button class="btn btn-danger btn-sm arc-del-btn">삭제</button>':'<button class="btn btn-ghost btn-sm" disabled style="opacity:0.4;">삭제</button>')+
       '</div>'+
     '</div>';
   }).join('');
@@ -578,65 +559,40 @@ async function renderArchiveManager(keys){
     '</div>'+
   '</div>';
 
-  var appEl=document.getElementById('app');
-  if(appEl){appEl.insertAdjacentHTML('afterend',modalHtml);}
-  else{document.body.insertAdjacentHTML('beforeend',modalHtml);}
+  document.body.insertAdjacentHTML('beforeend',modalHtml);
 
-  var modal=document.getElementById('archiveModal');
-  if(!modal){console.error('archiveModal not found');return;}
-
-  modal.querySelector('#archiveModalClose').addEventListener('click',function(){modal.remove();});
-  modal.addEventListener('click',function(e){if(e.target===modal){modal.remove();}});
-
-  // ① 최초 등록
-  var pwSetBtn=modal.querySelector('#adminPwSetBtn');
-  if(pwSetBtn) pwSetBtn.addEventListener('click',async function(){
-    var a=modal.querySelector('#adminPwInput');
-    var b=modal.querySelector('#adminPwConfirm');
-    if(!a.value){alert('비밀번호를 입력하세요.');return;}
-    if(a.value!==b.value){alert('비밀번호가 일치하지 않습니다.');return;}
-    pwSetBtn.disabled=true;pwSetBtn.textContent='저장 중...';
-    try{
-      await saveAdminPwHash(a.value);
-      _adminAuthedSession=true;
-      await saveAudit('admin_pw_set',{by:currentUser?currentUser.id:null});
-      modal.remove();
-      await renderArchiveManager(keys);
-    }catch(e){alert('저장 실패: '+String(e));pwSetBtn.disabled=false;pwSetBtn.textContent='비밀번호 등록';}
+  // 닫기
+  document.getElementById('archiveModalClose').addEventListener('click',function(){
+    var m=document.getElementById('archiveModal');if(m)m.remove();
+  });
+  document.getElementById('archiveModal').addEventListener('click',function(e){
+    if(e.target===this){this.remove();}
   });
 
-  // ② 인증
-  var pwAuthBtn=modal.querySelector('#adminPwAuthBtn');
-  if(pwAuthBtn) pwAuthBtn.addEventListener('click',async function(){
-    var a=modal.querySelector('#adminPwInput');
+  // 비밀번호 최초 등록
+  var pwSetBtn=document.getElementById('adminPwSetBtn');
+  if(pwSetBtn) pwSetBtn.addEventListener('click',function(){
+    var a=document.getElementById('adminPwInput');
+    var b=document.getElementById('adminPwConfirm');
     if(!a.value){alert('비밀번호를 입력하세요.');return;}
-    pwAuthBtn.disabled=true;pwAuthBtn.textContent='확인 중...';
-    var ok=await verifyAdminPw(a.value);
-    if(!ok){alert('비밀번호가 틀렸습니다.');pwAuthBtn.disabled=false;pwAuthBtn.textContent='인증';return;}
-    _adminAuthedSession=true;
-    modal.remove();
-    await renderArchiveManager(keys);
+    if(a.value!==b.value){alert('비밀번호가 일치하지 않습니다.');return;}
+    try{window.localStorage.setItem('adminPwHash',simpleHash(a.value));setAdminPw(a.value);}catch(e){}
+    var m=document.getElementById('archiveModal');if(m)m.remove();
+    renderArchiveManager(keys);
   });
 
-  // ③ 비밀번호 변경
-  var pwChangeBtn=modal.querySelector('#adminPwChangeBtn');
-  if(pwChangeBtn) pwChangeBtn.addEventListener('click',async function(){
-    var a=modal.querySelector('#adminPwNew');
-    var b=modal.querySelector('#adminPwNewConfirm');
-    if(!a.value){alert('새 비밀번호를 입력하세요.');return;}
-    if(a.value!==b.value){alert('비밀번호가 일치하지 않습니다.');return;}
-    pwChangeBtn.disabled=true;pwChangeBtn.textContent='변경 중...';
-    try{
-      await saveAdminPwHash(a.value);
-      await saveAudit('admin_pw_changed',{by:currentUser?currentUser.id:null});
-      alert('비밀번호가 변경되었습니다.');
-      a.value='';b.value='';
-      pwChangeBtn.disabled=false;pwChangeBtn.textContent='비밀번호 변경';
-    }catch(e){alert('변경 실패: '+String(e));pwChangeBtn.disabled=false;pwChangeBtn.textContent='비밀번호 변경';}
+  // 비밀번호 인증
+  var pwAuthBtn=document.getElementById('adminPwAuthBtn');
+  if(pwAuthBtn) pwAuthBtn.addEventListener('click',function(){
+    var a=document.getElementById('adminPwInput');
+    setAdminPw(a.value);
+    if(!isAdminAuthed()){alert('비밀번호가 틀렸습니다.');return;}
+    var m=document.getElementById('archiveModal');if(m)m.remove();
+    renderArchiveManager(keys);
   });
 
   // 열람
-  modal.querySelectorAll('.arc-view-btn').forEach(function(btn){
+  document.querySelectorAll('.arc-view-btn').forEach(function(btn){
     btn.addEventListener('click',async function(){
       var row=btn.closest('.archive-row');
       var key=row.getAttribute('data-key');
@@ -644,14 +600,17 @@ async function renderArchiveManager(keys){
       if(!data){alert('데이터를 찾을 수 없습니다.');return;}
       var w=window.open('','_blank');
       if(w){
-        w.document.write('<html><head><meta charset="utf-8"><title>'+escapeHtml(key)+'</title><style>body{font-family:monospace;background:#1a1a1a;color:#e0e0e0;padding:20px;}pre{white-space:pre-wrap;word-break:break-all;}</style></head><body><pre>'+escapeHtml(JSON.stringify(data,null,2))+'</pre></body></html>');
+        w.document.write('<html><head><meta charset="utf-8"><title>Archive '+escapeHtml(key)+'</title><style>body{font-family:monospace;background:#1a1a1a;color:#e0e0e0;padding:20px;}pre{white-space:pre-wrap;word-break:break-all;}</style></head><body><pre>'+escapeHtml(JSON.stringify(data,null,2))+'</pre></body></html>');
         w.document.close();
-      }else{alert('새 창이 차단되었습니다.');console.log(data);}
+      } else {
+        alert('새 창이 차단되었습니다. 콘솔에서 확인하세요.');
+        console.log(data);
+      }
     });
   });
 
-  // 삭제
-  modal.querySelectorAll('.arc-del-btn').forEach(function(btn){
+  // 삭제 (관리자 인증 완료 시에만 버튼 존재)
+  document.querySelectorAll('.arc-del-btn').forEach(function(btn){
     btn.addEventListener('click',async function(){
       var row=btn.closest('.archive-row');
       var key=row.getAttribute('data-key');
@@ -662,11 +621,12 @@ async function renderArchiveManager(keys){
         await saveAudit('archive_deleted',{key:key,by:currentUser?currentUser.id:null});
         row.style.opacity='0.4';row.style.pointerEvents='none';
         btn.textContent='삭제됨';
+        // 모달 새로고침
         setTimeout(async function(){
-          modal.remove();
+          var m=document.getElementById('archiveModal');if(m)m.remove();
           var newKeys=await listArchives();
           if(!newKeys||newKeys.length===0){alert('모든 로그가 삭제되었습니다.');return;}
-          await renderArchiveManager(newKeys);
+          renderArchiveManager(newKeys);
         },600);
       }catch(e){
         alert('삭제 실패: '+String(e));
@@ -675,6 +635,7 @@ async function renderArchiveManager(keys){
     });
   });
 }
+
 async function listArchives(){var keys=await storageList('game_archive:');return keys||[];}
 async function fetchArchive(key){var v=await storageGet(key);return safeParse(v,null);} 
 
@@ -972,7 +933,8 @@ function renderVoteTab(){
   var viewArch=document.getElementById('viewArchivesBtn');
   if(viewArch) viewArch.addEventListener('click',async function(){
     var keys=await listArchives();
-    await renderArchiveManager(keys||[]);
+    if(!keys||keys.length===0){alert('보관된 게임 로그가 없습니다.');return;}
+    renderArchiveManager(keys);
   });
 
   if(poll){renderVoteInputs();renderTally();var cb=document.getElementById('closePollBtn');if(cb)cb.addEventListener('click',handleClosePoll);}
@@ -1496,10 +1458,29 @@ var done=aps.filter(function(a){
 
 }
 
-  // 완료
+  // 완료 — 참가자에게는 승인된 항목만, 거부된 경우 "승인 거부" 사실만 표시
   if(done.length>0){
     html+='<section><div class="section-label"><span class="no mono">완료</span><span class="name">처리 완료</span></div>';
-    html+=done.slice(0,5).map(function(a){return renderApprovalItem(a,true);}).join('');
+    if(isPlayer()){
+      // 참가자: 승인된 것만 내용 표시, 거부는 사실만
+      var playerDoneHtml='';
+      done.slice(0,10).forEach(function(a){
+        if(a.status==='approved'){
+          // questionReject: 반려 사실만 (사유 없이)
+          if(a.type==='questionReject'){
+            playerDoneHtml+='<div class="approval-item"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><span class="a-type">질문 반려</span><span class="status-pill approved">승인</span></div><div class="a-title">'+escapeHtml(a.title)+'</div><div class="a-meta">처리 완료 · '+timeAgo(a.reviewedAt||a.createdAt)+'</div><div class="a-body">⛔ 이 질문은 반려 처리되었습니다.</div></div>';
+          } else {
+            playerDoneHtml+=renderApprovalItem(a,true);
+          }
+        } else if(a.status==='rejected'||a.status==='rejected_final'){
+          // 거부: 제목과 거부 사실만
+          playerDoneHtml+='<div class="approval-item"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><span class="a-type">'+(ATYPE_LABEL[a.type]||a.type)+'</span><span class="status-pill rejected">승인 거부</span></div><div class="a-title">'+escapeHtml(a.title)+'</div><div class="a-meta">처리 완료 · '+timeAgo(a.reviewedAt||a.createdAt)+'</div><div class="a-body" style="color:var(--text-soft);">승인이 거부되었습니다.</div></div>';
+        }
+      });
+      html+=playerDoneHtml||'<div class="card empty">처리 완료 항목이 없습니다.</div>';
+    } else {
+      html+=done.slice(0,5).map(function(a){return renderApprovalItem(a,true);}).join('');
+    }
     html+='</section>';
   }
 
@@ -1783,11 +1764,42 @@ if(!compact){
     if(a.status === 'pending'){
       if(isQuestioner() || isJudge() || isChief()){
         html+='<div class="a-body">'+escapeHtml(a.body)+'</div>';
+        // 평가자에게 전달할 설명 (출제자/평가자에게만 표시)
+        if(a.authorNote){
+          html+='<div class="a-reason violet" style="margin-top:6px;">📝 출제자 설명: '+escapeHtml(a.authorNote)+'</div>';
+        }
       }else{
         html+='<div class="a-body">🔒 승인 전 비공개</div>';
       }
+    }else if(a.status==='approved'){
+      // 승인된 경우: 참가자도 볼 수 있음 (단, answer/questionReject 본문은 별도 처리)
+      if(a.type==='questionReject'){
+        // 참가자: 반려 사유 숨김 — 반려됐다는 사실만 (질문 탭에서 표시)
+        if(!isPlayer()){
+          html+='<div class="a-body">'+escapeHtml(a.body)+'</div>';
+          if(a.authorNote){
+            html+='<div class="a-reason violet" style="margin-top:6px;">📝 출제자 설명: '+escapeHtml(a.authorNote)+'</div>';
+          }
+        }
+      } else {
+        html+='<div class="a-body">'+escapeHtml(a.body)+'</div>';
+        if(a.authorNote && !isPlayer()){
+          html+='<div class="a-reason violet" style="margin-top:6px;">📝 출제자 설명: '+escapeHtml(a.authorNote)+'</div>';
+        }
+      }
+    }else if(a.status==='rejected'||a.status==='rejected_final'){
+      // 거부된 경우: 참가자에게는 내용 비공개
+      if(!isPlayer()){
+        html+='<div class="a-body">'+escapeHtml(a.body)+'</div>';
+        if(a.authorNote){
+          html+='<div class="a-reason violet" style="margin-top:6px;">📝 출제자 설명: '+escapeHtml(a.authorNote)+'</div>';
+        }
+      }
     }else{
       html+='<div class="a-body">'+escapeHtml(a.body)+'</div>';
+      if(a.authorNote && !isPlayer()){
+        html+='<div class="a-reason violet" style="margin-top:6px;">📝 출제자 설명: '+escapeHtml(a.authorNote)+'</div>';
+      }
     }
 }
 
@@ -1846,8 +1858,8 @@ if(!compact){
     }
   }
 
-  // 거부 사유 — compact 여부와 무관하게 항상 표시
-  if(a.rejectReason){
+  // 거부 사유 — 참가자에게는 비공개 (출제자·평가자만 열람)
+  if(a.rejectReason && !isPlayer()){
     html+='<div class="a-reason" style="margin-top:8px;margin-bottom:4px;">⛔ <strong>거부 사유:</strong> '+escapeHtml(a.rejectReason)+'</div>';
   }
   // 이의제기 기각 사유 — compact 여부와 무관하게 항상 표시
@@ -1997,6 +2009,7 @@ function attachApprovalEvents(box, aps){
             q.status='rejected';
             q.rejectedBy=ap.authorName;
             q.rejectedAt=ap.approvedAt||Date.now();
+            q.rejectReason=ap.rejectReason||null; // 반려 사유 저장 (참가자 비공개용)
             await saveQuestions(qs);
           }
         }catch(e){console.error('question reject failed',e);}
@@ -2378,9 +2391,13 @@ function renderQuestionItem(q, idx, allQs){
     '<div class="q-num">Q'+q.no+' · '+timeAgo(q.askedAt)+' · '+escapeHtml(q.askedBy||'참가자')+'</div>'+
     '<div class="q-text">'+escapeHtml(q.text)+'</div>';
   
-  // ← 반려된 질문 표시
+  // ← 반려된 질문 표시: 참가자에게는 사유 비공개
   if(q.status==='rejected'){
-    html+='<div class="q-rejected-banner">⛔ 이 질문은 반려되었습니다. (반려자: '+escapeHtml(q.rejectedBy||'?')+' · '+timeAgo(q.rejectedAt)+')</div>';
+    if(isPlayer()){
+      html+='<div class="q-rejected-banner">⛔ 이 질문은 반려되었습니다.</div>';
+    } else {
+      html+='<div class="q-rejected-banner">⛔ 이 질문은 반려되었습니다. (반려자: '+escapeHtml(q.rejectedBy||'?')+' · '+timeAgo(q.rejectedAt)+')'+(q.rejectReason?'<br/>반려 사유: '+escapeHtml(q.rejectReason):'')+'</div>';
+    }
   }
 
   if(q.answer){
@@ -2398,16 +2415,34 @@ function renderQuestionItem(q, idx, allQs){
         '</div>'+
         '<textarea class="q-answer-text" id="q_answer_'+escapeHtml(q.id)+'" placeholder="서술형 답변이 필요한 경우 직접 입력..." style="min-height:60px;"></textarea>'+
       '</div>'+
+      '<div class="field"><label style="font-size:12px;">평가자에게 전달할 설명 (선택)</label>'+
+        '<textarea class="q-answer-note" id="q_answer_note_'+escapeHtml(q.id)+'" style="min-height:40px;" placeholder="추가 설명이 있으면 입력하세요..."></textarea>'+
+      '</div>'+
       '<button class="btn btn-primary btn-sm q-submit-answer" data-qid="'+escapeHtml(q.id)+'">답변 승인 요청 제출</button>'+
     '</div>';
   }
 
-  // 평가자/출제자: 간단 반려 체크박스 추가 (빠른 거부)
-  if((isJudge()||isQuestioner())&&q.status==='pending'){
-    html+='<div style="margin-top:8px;display:flex;align-items:center;gap:8px;">'+
-      '<input type="checkbox" class="q-reject-chk" data-qid="'+escapeHtml(q.id)+'" id="qreject_'+escapeHtml(q.id)+'"/>'+
-      '<label for="qreject_'+escapeHtml(q.id)+'" style="font-size:13px;color:var(--text-soft);margin:0;">질문 반려</label>'+
-    '</div>';
+  // 출제자: 질문 반려 버튼 (반려 사유 입력 → 승인 요청)
+  if(isQuestioner()&&q.status==='pending'){
+    // 이미 반려 승인 요청이 있는 경우 버튼 숨김
+    var hasRejectAp=(appState.approvals||[]).some(function(a){return a.type==='questionReject'&&a.relatedQuestionId===q.id&&a.status==='pending';});
+    if(!hasRejectAp){
+      html+='<div style="margin-top:8px;">'+
+        '<div id="qreject_form_'+escapeHtml(q.id)+'" style="display:none;">'+
+          '<div class="field" style="margin-bottom:6px;"><label style="font-size:12px;">반려 사유 (필수)</label>'+
+            '<textarea class="q-reject-reason" id="qreject_reason_'+escapeHtml(q.id)+'" style="min-height:60px;" placeholder="반려 사유를 입력하세요..."></textarea></div>'+
+          '<div class="field" style="margin-bottom:6px;"><label style="font-size:12px;">평가자에게 전달할 설명 (선택)</label>'+
+            '<textarea class="q-reject-note" id="qreject_note_'+escapeHtml(q.id)+'" style="min-height:40px;" placeholder="추가 설명이 있으면 입력하세요..."></textarea></div>'+
+          '<div class="btn-row">'+
+            '<button class="btn btn-sm btn-danger q-reject-submit" data-qid="'+escapeHtml(q.id)+'">반려 승인 요청</button>'+
+            '<button class="btn btn-sm btn-ghost q-reject-cancel" data-qid="'+escapeHtml(q.id)+'">취소</button>'+
+          '</div>'+
+        '</div>'+
+        '<button class="btn btn-sm btn-danger q-reject-open" data-qid="'+escapeHtml(q.id)+'" style="margin-top:4px;">질문 반려</button>'+
+      '</div>';
+    } else {
+      html+='<div style="margin-top:8px;font-size:12px;color:var(--gold);">⏳ 반려 승인 요청이 평가자 검토 중입니다.</div>';
+    }
   }
 
   html+='</div>';
@@ -2452,7 +2487,9 @@ function attachQuestionEvents(box){
       var qid=btn.getAttribute('data-qid');
       var item=btn.closest('.question-item');
       var ta=item?item.querySelector('.q-answer-text'):null;
+      var noteEl=item?item.querySelector('.q-answer-note'):null;
       var answerText=ta?ta.value.trim():'';
+      var authorNote=noteEl?noteEl.value.trim():'';
       if(!answerText){alert('답변을 입력하세요.');return;}
       var qs2=await fetchQuestions();
       var q=qs2.find(function(x){return x.id===qid;});
@@ -2462,6 +2499,7 @@ function attachQuestionEvents(box){
         type:'answer',
         title:'질문 Q'+q.no+' 답변: '+q.text.slice(0,30)+(q.text.length>30?'...':''),
         body:'질문: '+q.text+'\n\n답변: '+answerText,
+        authorNote:authorNote||null,
         authorId:currentUser.id,authorName:currentUser.name,
         relatedQuestionId:qid,proposedAnswer:answerText
       });
@@ -2475,32 +2513,53 @@ function attachQuestionEvents(box){
     });
   });
 
-  // 질문 반려 체크박스 처리
-  box.querySelectorAll('.q-reject-chk').forEach(function(cb){
-    cb.addEventListener('change',async function(){
-      var qid=cb.getAttribute('data-qid');
+  // 질문 반려 버튼: 폼 열기
+  box.querySelectorAll('.q-reject-open').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var qid=btn.getAttribute('data-qid');
+      var form=document.getElementById('qreject_form_'+qid);
+      if(form){ form.style.display='block'; btn.style.display='none'; }
+    });
+  });
+
+  // 질문 반려 버튼: 취소
+  box.querySelectorAll('.q-reject-cancel').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var qid=btn.getAttribute('data-qid');
+      var form=document.getElementById('qreject_form_'+qid);
+      var openBtn=box.querySelector('.q-reject-open[data-qid="'+qid+'"]');
+      if(form){ form.style.display='none'; }
+      if(openBtn){ openBtn.style.display=''; }
+    });
+  });
+
+  // 질문 반려 버튼: 승인 요청 제출
+  box.querySelectorAll('.q-reject-submit').forEach(function(btn){
+    btn.addEventListener('click',async function(){
+      var qid=btn.getAttribute('data-qid');
+      var reasonEl=document.getElementById('qreject_reason_'+qid);
+      var noteEl=document.getElementById('qreject_note_'+qid);
+      var reason=reasonEl?reasonEl.value.trim():'';
+      var note=noteEl?noteEl.value.trim():'';
+      if(!reason){alert('반려 사유를 입력하세요.');return;}
       var qs2=await fetchQuestions();
       var q=qs2.find(function(x){return x.id===qid;});
       if(!q)return;
-      if(cb.checked){
-        // ← 반려 체크 시 approval로 생성해서 다른 평가자의 승인을 받게 함
-        await createApprovalWithLog({
-          type:'questionReject',
-          title:'질문 Q'+q.no+' 반려: '+q.text.slice(0,30)+(q.text.length>30?'...':''),
-          body:'질문 내용:\n\n'+q.text+'\n\n이 질문의 반려를 승인합니다.',
-          authorId:currentUser.id,
-          authorName:currentUser.name,
-          relatedQuestionId:qid
-        });
-      } else {
-        // ← 체크 해제 시 관련된 반려 approval 제거
-        var aps=await fetchApprovals();
-        var rejectAp=aps.find(function(a){return a.type==='questionReject' && a.relatedQuestionId===qid && a.status!=='approved';});
-        if(rejectAp){
-          await deleteApproval(rejectAp.id);
-        }
-      }
+      // 반려를 approval 요청으로 생성 (평가자 승인 필요)
+      await createApprovalWithLog({
+        type:'questionReject',
+        title:'질문 Q'+q.no+' 반려: '+q.text.slice(0,30)+(q.text.length>30?'...':''),
+        body:'질문 내용:\n\n'+q.text+'\n\n반려 사유:\n'+reason+(note?'\n\n출제자 설명:\n'+note:''),
+        rejectReason:reason,
+        authorNote:note||null,
+        authorId:currentUser.id,
+        authorName:currentUser.name,
+        relatedQuestionId:qid
+      });
       await refreshAll(true);
+      // 승인 탭으로 전환
+      activeTab='approve';
+      renderTabContent();
     });
   });
 }
