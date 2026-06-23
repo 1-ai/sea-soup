@@ -209,6 +209,36 @@ fieldset.role-pick legend{font-size:12.5px;font-weight:700;margin-bottom:8px;pad
 
 footer.legal-footnote{max-width:560px;margin:36px auto 0;padding:0 16px 28px;font-size:10.5px;color:var(--text-soft-onink);line-height:1.6;text-align:center;}
 
+/* ---- admin / role tags ---- */
+.role-tag.admin{background:rgba(184,146,63,0.3);color:#f0d080;border:1px solid rgba(184,146,63,0.6);}
+.role-tag.room-admin{background:rgba(74,58,122,0.35);color:#d4c8f0;border:1px solid rgba(74,58,122,0.55);}
+.role-tag.spectator{background:rgba(50,50,70,0.4);color:#9faabb;border:1px solid rgba(100,110,130,0.4);}
+
+/* ---- lock indicator ---- */
+.setting-locked{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gold);background:rgba(184,146,63,0.1);border:1px solid rgba(184,146,63,0.3);border-radius:8px;padding:6px 10px;margin-top:4px;}
+.setting-locked .lock-icon{font-size:14px;}
+.setting-unlocked{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--teal);background:rgba(46,108,94,0.1);border:1px solid rgba(46,108,94,0.3);border-radius:8px;padding:6px 10px;margin-top:4px;}
+
+/* ---- extend time buttons ---- */
+.extend-btns{display:flex;gap:6px;margin-top:8px;}
+.btn-extend{padding:5px 10px;border-radius:8px;border:1.5px solid rgba(184,146,63,0.4);background:rgba(184,146,63,0.1);color:var(--gold);font-size:12px;font-weight:700;cursor:pointer;}
+.btn-extend:hover{background:rgba(184,146,63,0.2);}
+
+/* ---- objection pending notice ---- */
+.objection-pending-notice{background:rgba(74,58,122,0.2);border:1.5px solid rgba(74,58,122,0.45);border-radius:10px;padding:14px;text-align:center;color:#c4b8e8;font-size:13px;line-height:1.6;}
+
+/* ---- room closed banner ---- */
+.room-closed-banner{background:rgba(162,58,44,0.2);border:1.5px solid rgba(162,58,44,0.45);border-radius:10px;padding:12px 14px;font-size:12.5px;color:#e7b4a7;margin-bottom:14px;}
+
+/* ---- spectator badge ---- */
+.spectator-notice{background:rgba(50,50,70,0.5);border:1px solid rgba(100,110,130,0.4);border-radius:10px;padding:10px 14px;font-size:12.5px;color:#9faabb;margin-bottom:10px;text-align:center;}
+
+/* ---- log list ---- */
+.log-item{background:var(--ink-bg-2);border:1px solid rgba(184,146,63,0.2);border-radius:9px;padding:10px 12px;margin-bottom:6px;font-size:12px;}
+.log-item .log-time{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-soft-onink);margin-bottom:3px;}
+.log-item .log-action{font-weight:600;color:var(--text-onink);}
+.log-item .log-detail{color:var(--text-soft-onink);margin-top:2px;}
+
 /* ---- archive manager modal ---- */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;}
 .modal-box{background:var(--ink-bg-2);border:1px solid rgba(184,146,63,0.4);border-radius:16px;width:100%;max-width:520px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;}
@@ -373,7 +403,16 @@ var ATYPE_LABEL={
 
 /* ===== state ===== */
 var currentUser=null;
-var appState={roster:[],polls:[],approvals:[],questions:[],activePoll:null,votes:{},lastSig:null,chiefId:null,chairs:{},chairAutoSelectDisagreers:null,_savedInputs:{},_focusedElementId:null,_suspendRender:false,_pendingRenderFn:null};
+var appState={roster:[],polls:[],approvals:[],questions:[],activePoll:null,votes:{},lastSig:null,chiefId:null,chairs:{},chairAutoSelectDisagreers:null,_savedInputs:{},_focusedElementId:null,_suspendRender:false,_pendingRenderFn:null,
+  // 신규: 관리자/방 시스템
+  adminData:null,           // {pwHash, roomAdmins:{uid:true}}
+  roomSettings:{},          // 방 강제 설정 맵
+  roomClosed:false,         // 방 폐쇄 여부
+  roomLogs:[],              // 방 로그 (관리자/방관리자 전용)
+  spectators:[],            // 관전자 목록
+  _rejectFormState:{},      // 반려 창 상태 (qid → {open:bool, reason:'', note:''})
+  _autoFillInProgress:false // 자동 작성 중복 방지
+};
 
 /* ===== 입력 중 렌더링 보류 (모바일 키보드 깜빡임 방지) =====
    input/textarea/select에 포커스가 있는 동안에는 실시간 갱신이 와도
@@ -456,6 +495,33 @@ async function saveChief(data){await storageSet('chief',JSON.stringify(data));}
 async function fetchNominationPending(){var v=await storageGet('nomination_pending');return safeParse(v,null);} 
 async function clearNominationPending(){try{await storageDelete('nomination_pending');}catch(e){} }
 async function saveDesignatedQuestioner(obj){return await storageSet('designatedQuestioner',JSON.stringify(obj));}
+
+/* ===== 관리자/방 관리 데이터 레이어 ===== */
+async function fetchRoomSettings(){var v=await storageGet('room_settings');return safeParse(v,{});}
+async function saveRoomSettings(s){return await storageSet('room_settings',JSON.stringify(s));}
+async function fetchRoomClosed(){var v=await storageGet('room_closed');return v==='true';}
+async function saveRoomClosed(b){return await storageSet('room_closed',b?'true':'false');}
+async function fetchRoomLogs(){var keys=await storageList('room_log:');var rows=await Promise.all(keys.map(async function(k){var v=await storageGet(k);return safeParse(v,null);}));return rows.filter(Boolean).sort(function(a,b){return b.ts-a.ts;});}
+async function addRoomLog(action,detail){
+  var id=genId();
+  var entry={id:id,action:action,detail:detail||'',actor:currentUser?currentUser.name:'?',actorId:currentUser?currentUser.id:null,ts:Date.now()};
+  await storageSet('room_log:'+id,JSON.stringify(entry));
+  return entry;
+}
+async function fetchSpectators(){var keys=await storageList('spectator:');var rows=await Promise.all(keys.map(async function(k){var v=await storageGet(k);var d=safeParse(v,null);if(!d)return null;return Object.assign({id:k.slice('spectator:'.length)},d);}));return rows.filter(Boolean);}
+async function saveSpectator(id,data){return await storageSet('spectator:'+id,JSON.stringify(data));}
+async function removeSpectator(id){return await storageDelete('spectator:'+id);}
+// 강제 설정 상태: 'user'(사용자 선택), 'force_on'(강제 활성화), 'force_off'(강제 비활성화)
+function getSettingState(settings,key){return(settings&&settings[key])||'user';}
+// 방 폐쇄 여부 확인 (관리자·방관리자·평가자는 허용)
+function isRoomActionBlocked(action){
+  if(!appState.roomClosed) return false;
+  // 폐쇄 중 허용: 관리자/방관리자는 모든 액션 허용
+  if(isRoomAdmin()) return false;
+  // 폐쇄 중 차단: 질문·투표·초대 불가
+  if(action==='question'||action==='vote'||action==='join') return true;
+  return false;
+}
 
 /* ===== game record utilities ===== */
 async function listAllKeys(){var all=await storageList('');return all||[];}
@@ -714,7 +780,16 @@ function brandIcon(){return'<svg viewBox="0 0 100 100"><g stroke="var(--gold)" f
 function isJudge(){return currentUser&&currentUser.role==='평가자';}
 function isQuestioner(){return currentUser&&currentUser.role==='출제자';}
 function isPlayer(){return currentUser&&currentUser.role==='참가자';}
-function canVoteOn(poll){if(!currentUser)return false;if(poll.type==='score')return isJudge();return poll.voterRole==='전체'||poll.voterRole===currentUser.role;}
+function isAdmin(){return currentUser&&currentUser.role==='관리자';}
+function isRoomAdmin(){return currentUser&&(currentUser.role==='관리자'||currentUser.role==='방관리자');}
+function isSpectator(){return currentUser&&currentUser.role==='관전자';}
+// 관전자는 투표·평가·질문 제출 불가
+function canVoteOn(poll){
+  if(!currentUser)return false;
+  if(isSpectator())return false;
+  if(poll.type==='score')return isJudge();
+  return poll.voterRole==='전체'||poll.voterRole===currentUser.role;
+}
 // 찬반 수(집계)는 모두에게 공개하되, 반대자 "이름"은 출제자에게만 공개하는 투표 유형
 // (평가장 선임=chiefvote, 전담 평가원 선임/재선임=chair:*)
 function isDisagreeRevealPreset(preset){return preset==='chiefvote'||(typeof preset==='string'&&preset.indexOf('chair:')===0);}
@@ -752,6 +827,8 @@ function renderJoin(){
             '<label class="role-opt"><input type="radio" name="role" value="평가자" checked/> 평가자</label>'+
             '<label class="role-opt"><input type="radio" name="role" value="출제자"/> 출제자</label>'+
             '<label class="role-opt"><input type="radio" name="role" value="참가자"/> 참가자</label>'+
+            '<label class="role-opt"><input type="radio" name="role" value="관전자"/> 👁 관전자</label>'+
+            '<label class="role-opt"><input type="radio" name="role" value="방관리자"/> 🛡 방관리자</label>'+
           '</div>'+
         '</fieldset>'+
         '<button type="submit" class="btn btn-primary">참여하기</button>'+
@@ -767,6 +844,12 @@ function renderJoin(){
   });
 }
 async function registerParticipant(name,role){
+  // ✅ 사양 #18: 방 폐쇄 시 신규 입장 금지 (관리자 제외)
+  var closed=await fetchRoomClosed();
+  if(closed&&role!=='관리자'&&role!=='방관리자'){
+    alert('현재 방이 폐쇄되어 있습니다. 입장할 수 없습니다.');
+    return;
+  }
   var id=genId();
   var joinedAt = Date.now();
 
@@ -817,7 +900,7 @@ async function leaveAndRejoin(){
 function renderMain(){
   var root=document.getElementById('app');
   if(!root) return;
-  var roleTagClass=isJudge()?'judge':(isQuestioner()?'questioner':'player');
+  var roleTagClass=isAdmin()?'admin':(isRoomAdmin()&&!isAdmin()?'room-admin':(isJudge()?'judge':(isQuestioner()?'questioner':(isSpectator()?'spectator':'player'))));
 
   var pendA=pendingApprovalCount();
   var pendQ=pendingQuestionCount();
@@ -828,6 +911,9 @@ function renderMain(){
     if(chiefPerson) chiefInfo='<span class="chief-badge">⚖ 평가장: '+escapeHtml(chiefPerson.name)+'</span>';
   }
 
+  var closedBanner=appState.roomClosed?'<div class="room-closed-banner">🚫 현재 방이 폐쇄되어 있습니다. 신규 입장·질문·투표가 제한됩니다. (관리자·방관리자 제외)</div>':'';
+  var spectatorNotice=isSpectator()?'<div class="spectator-notice">👁 관전자 모드 — 시청만 가능합니다. 투표·질문·정답 제출이 불가합니다.</div>':'';
+
   root.innerHTML=
     '<header class="hdr">'+
       '<div class="hdr-top">'+
@@ -837,16 +923,21 @@ function renderMain(){
       '<div class="user-badge">'+
         '<div class="who">'+escapeHtml(currentUser.name)+'<span class="role-tag '+roleTagClass+'">'+currentUser.role+'</span>'+
         (isChief()?' <span style="font-size:10px;color:var(--gold);font-family:\'IBM Plex Mono\',monospace;">⚖평가장</span>':'')+
+        (isAdmin()?' <span style="font-size:10px;color:#f0d080;font-family:\'IBM Plex Mono\',monospace;">👑관리자</span>':'')+
+        (isRoomAdmin()&&!isAdmin()?' <span style="font-size:10px;color:#d4c8f0;font-family:\'IBM Plex Mono\',monospace;">🛡방관리자</span>':'')+
         '</div>'+
         '<button id="leaveBtn" type="button">변경</button>'+
       '</div>'+
       (chiefInfo?'<div style="margin-top:10px;">'+chiefInfo+'</div>':'')+
     '</header>'+
+    (closedBanner?'<div class="wrap" style="padding-bottom:0;margin-top:8px;">'+closedBanner+'</div>':'')+
+    (spectatorNotice?'<div class="wrap" style="padding-bottom:0;margin-top:4px;">'+spectatorNotice+'</div>':'')+
     '<nav class="main-nav">'+
       '<button class="nav-btn'+(activeTab==='vote'?' active':'')+'" data-tab="vote">투표</button>'+
-      '<button class="nav-btn'+(activeTab==='approve'?' active':'')+'" data-tab="approve">승인·이의제기'+(pendA>0?'<span class="nav-badge">'+pendA+'</span>':'')+' </button>'+
+      (!isSpectator()?'<button class="nav-btn'+(activeTab==='approve'?' active':'')+'" data-tab="approve">승인·이의제기'+(pendA>0?'<span class="nav-badge">'+pendA+'</span>':'')+' </button>':'')+
       '<button class="nav-btn'+(activeTab==='question'?' active':'')+'" data-tab="question">질문'+(pendQ>0&&isJudge()?'<span class="nav-badge">'+pendQ+'</span>':'')+' </button>'+
       '<button class="nav-btn'+(activeTab==='roster'?' active':'')+'" data-tab="roster">명부</button>'+
+      (isRoomAdmin()?'<button class="nav-btn'+(activeTab==='admin'?' active':'')+'" data-tab="admin">⚙관리</button>':'')+
     '</nav>'+
     '<main class="wrap">'+
       '<div id="tabContent"></div>'+
@@ -860,11 +951,43 @@ function renderMain(){
   renderTabContent();
 }
 
+// ✅ 사양 #6: 명부 탭 부분 업데이트 - 실제 명부 영역만 갱신
+function updateRosterOnly(){
+  // tabContent 내에서 명부 섹션만 찾아 업데이트
+  var box=document.getElementById('tabContent');
+  if(!box||activeTab!=='roster') return;
+  // 명부 섹션(첫 번째 section)의 card만 갱신
+  var rosterCard=box.querySelector('.card');
+  if(!rosterCard) return renderRosterTab(); // 없으면 전체 렌더링
+  var judges=appState.roster.filter(function(r){return r.role==='평가자';});
+  var questioners=appState.roster.filter(function(r){return r.role==='출제자';});
+  var players=appState.roster.filter(function(r){return r.role==='참가자';});
+  var spectators=appState.roster.filter(function(r){return r.role==='관전자';});
+  var chief=appState.chiefId?appState.roster.find(function(r){return r.id===appState.chiefId;}):null;
+  var innerHtml='';
+  if(chief) innerHtml+='<div class="chip-group"><div class="cap">⚖ 평가장</div><div class="chips"><span class="chip chief">'+escapeHtml(chief.name)+'</span></div></div>';
+  if(appState.chairs&&Object.keys(appState.chairs).length){
+    innerHtml+='<div class="chip-group"><div class="cap">전담 평가원</div><div class="chips">'+Object.keys(appState.chairs).map(function(k){var c=appState.chairs[k];return'<span class="chip">'+escapeHtml(k)+' : '+escapeHtml(c.name)+'</span>';}).join('')+'</div></div>';
+  }
+  innerHtml+='<div class="chip-group"><div class="cap">평가자 '+judges.length+'명</div><div class="chips">'+
+    (judges.length?judges.map(function(j){var isC=j.id===appState.chiefId;return'<span class="chip'+(isC?' chief':'')+'">'+(isC?'⚖ ':'')+escapeHtml(j.name)+'</span>';}).join(''):'<span class="chip">없음</span>')+
+  '</div></div>'+
+  '<div class="chip-group"><div class="cap">출제자 '+questioners.length+'명</div><div class="chips">'+
+    (questioners.length?questioners.map(function(q){return'<span class="chip">'+escapeHtml(q.name)+'</span>';}).join(''):'<span class="chip">없음</span>')+
+  '</div></div>'+
+  '<div class="chip-group"><div class="cap">참가자 '+players.length+'명</div><div class="chips">'+
+    (players.length?players.map(function(p){return'<span class="chip">'+escapeHtml(p.name)+'</span>';}).join(''):'<span class="chip">없음</span>')+
+  '</div></div>'+
+  (spectators.length?'<div class="chip-group"><div class="cap">관전자 '+spectators.length+'명</div><div class="chips">'+spectators.map(function(p){return'<span class="chip" style="opacity:0.7;">👁 '+escapeHtml(p.name)+'</span>';}).join('')+'</div></div>':'');
+  rosterCard.innerHTML=innerHtml;
+}
+
 function renderTabContent(){
   if(activeTab==='vote') renderVoteTab();
   else if(activeTab==='approve') renderApproveTab();
   else if(activeTab==='question') renderQuestionTab();
   else if(activeTab==='roster') renderRosterTab();
+  else if(activeTab==='admin') renderAdminTab();
   
   // ← input 값 전역 복원 (모든 탭에서)
   setTimeout(function(){
@@ -919,10 +1042,63 @@ function renderVoteTab(){
       '<div class="poll-meta">투표 대상: '+escapeHtml(poll.voterRole)+'</div>'+
       (poll.detail?('<div class="a-body">'+escapeHtml(poll.detail)+'</div>'):'')+
       '<div id="voteInputs"></div>'+expireHtml+'<div class="hairline"></div><div id="tallyResults"></div>';
-    if(poll.status==='open'&&canClosePoll()) html+='<button id="closePollBtn" type="button" class="btn btn-secondary">마감하고 결과 확정</button>';
+    if(poll.status==='open'&&canClosePoll()){
+      html+='<button id="closePollBtn" type="button" class="btn btn-secondary">마감하고 결과 확정</button>';
+      // ✅ 사양 #9: 시간 연장 버튼 (5분 제한 투표에만 표시, 해당 역할만)
+      var canExtend=false;
+      if(poll.expiresAt){
+        if((poll.preset==='qagree'||poll.preset==='submission')&&isQuestioner()) canExtend=true;
+        if(poll.preset!=='qagree'&&poll.preset!=='submission'&&isJudge()) canExtend=true;
+      }
+      if(canExtend){
+        html+='<div class="extend-btns">'+
+          '<span style="font-size:11px;color:var(--text-soft-onink);align-self:center;">⏱ 연장:</span>'+
+          '<button class="btn-extend" data-extend="30">+30초</button>'+
+          '<button class="btn-extend" data-extend="60">+1분</button>'+
+          '<button class="btn-extend" data-extend="180">+3분</button>'+
+        '</div>';
+      }
+    }
     html+='</div>';
   }
   html+='</section>';
+
+  // ✅ 사양 #7: 정답 제출 투표 섹션 (투표 탭)
+  if(isPlayer()&&!isSpectator()&&!isRoomActionBlocked('vote')){
+    var pendingSubmissions=(appState.approvals||[]).filter(function(a){return a.type==='answerSubmit'&&a.status==='pending';});
+    html+='<section><div class="section-label"><span class="no mono">정답</span><span class="name">정답 제출 합의</span></div>';
+    html+='<div class="card">'+
+      '<div class="hint" style="margin-bottom:10px;">🎯 참가자들이 함께 정답을 제시합니다. (전체 참가자의 5분의 4 이상 찬성 필요)</div>'+
+      '<div class="field"><label for="asBody">정답</label><textarea id="asBody" placeholder="최종 정답을 입력하세요..."></textarea></div>'+
+      // ✅ 사양 #8: 정답 제출 투표에 5분 제한 옵션
+      '<div class="checkrow" style="margin-bottom:8px;"><input type="checkbox" id="answerTimeLimit" checked/><label for="answerTimeLimit">⏱ 5분 제한 투표</label></div>'+
+      '<button id="submitAnswerProposal" type="button" class="btn btn-primary">정답 제출</button>'+
+    '</div>';
+    if(pendingSubmissions.length>0){
+      html+='<div class="section-label" style="margin-top:14px;"><span class="no mono">진행중</span><span class="name">정답 제출 투표 ('+pendingSubmissions.length+'건)</span></div>';
+      pendingSubmissions.forEach(function(a){
+        a.votes=a.votes||{};
+        var voteKeys=Object.keys(a.votes);
+        var yesCount=voteKeys.filter(function(k){return a.votes[k]===true;}).length;
+        var noCount=voteKeys.length-yesCount;
+        var totalP=appState.roster.filter(function(r){return r.role==='참가자';}).length;
+        var reqV=Math.ceil(totalP*4/5);
+        var myVote=a.votes[currentUser.id];
+        html+='<div class="card" style="margin-top:8px;">'+
+          '<div style="font-size:12px;color:var(--text-soft);margin-bottom:4px;">📝 제출 정답</div>'+
+          '<div style="padding:10px;background:rgba(100,150,200,0.1);border-radius:6px;margin-bottom:10px;font-size:14px;">'+escapeHtml(a.answerText)+'</div>'+
+          '<div style="font-size:12px;margin-bottom:8px;"><span style="color:var(--teal);">✅ 찬성: '+yesCount+'</span> / <span style="color:var(--stamp-red);">❌ 반대: '+noCount+'</span> / <span>필요: '+reqV+'명</span></div>'+
+          '<div style="width:100%;height:8px;background:rgba(107,94,71,0.2);border-radius:99px;overflow:hidden;margin-bottom:10px;">'+
+            '<div style="height:100%;background:'+(yesCount>=reqV?'var(--teal)':'var(--stamp-red)')+';width:'+Math.min(100,reqV>0?Math.round(yesCount/reqV*100):0)+'%;transition:width 0.3s;"></div>'+
+          '</div>'+
+          (myVote===undefined?
+            '<div class="btn-row"><button class="btn btn-approve btn-sm as-vote" data-id="'+escapeHtml(a.id)+'" data-vote="yes">✅ 찬성</button><button class="btn btn-reject btn-sm as-vote" data-id="'+escapeHtml(a.id)+'" data-vote="no">❌ 반대</button></div>'
+            :'<div style="padding:8px;background:rgba(0,0,0,0.08);border-radius:6px;font-size:12px;">'+(myVote?'✅ 찬성으로 투표했습니다':'❌ 반대로 투표했습니다')+'</div>')+
+        '</div>';
+      });
+    }
+    html+='</section>';
+  }
 
   // composer
   html+='<section id="composerSection"></section>';
@@ -980,7 +1156,111 @@ function renderVoteTab(){
     renderArchiveManager(keys);
   });
 
-  if(poll){renderVoteInputs();renderTally();var cb=document.getElementById('closePollBtn');if(cb)cb.addEventListener('click',handleClosePoll);}
+  if(poll){
+    renderVoteInputs();
+    renderTally();
+    var cb=document.getElementById('closePollBtn');
+    if(cb)cb.addEventListener('click',handleClosePoll);
+    // ✅ 사양 #9: 시간 연장 이벤트
+    box.querySelectorAll('.btn-extend').forEach(function(btn){
+      btn.addEventListener('click',async function(){
+        var secs=Number(btn.getAttribute('data-extend'))||60;
+        var p=appState.activePoll;
+        if(!p||!p.expiresAt)return;
+        p.expiresAt=p.expiresAt+secs*1000;
+        await savePoll(p);
+        await saveAudit('poll_extended',{pollId:p.id,addedSecs:secs,by:currentUser?currentUser.id:null});
+        btn.textContent='✓';setTimeout(function(){btn.textContent=secs>=60?(secs/60)+'분':secs+'초';},800);
+        // 카운트다운 즉시 갱신
+        appState.activePoll=p;
+        tickCountdown();
+      });
+    });
+  }
+
+  // ✅ 사양 #7: 정답 제출 투표 이벤트 (투표 탭)
+  var submitAnswerProposal=box.querySelector('#submitAnswerProposal');
+  if(submitAnswerProposal){
+    try{var dasb=loadLocalDraft('composer:answerSubmit'); if(dasb && box.querySelector('#asBody')) box.querySelector('#asBody').value=dasb.body||'';}catch(e){}
+    var asbEl=box.querySelector('#asBody');
+    if(asbEl) asbEl.addEventListener('input',function(){try{saveLocalDraft('composer:answerSubmit',{body:asbEl.value.trim()});}catch(e){}});
+    submitAnswerProposal.addEventListener('click',async function(){
+      if(isSpectator()){alert('관전자는 정답을 제출할 수 없습니다.');return;}
+      if(isRoomActionBlocked('vote')){alert('방이 폐쇄되어 투표할 수 없습니다.');return;}
+      var answerText=(box.querySelector('#asBody')||{}).value||'';answerText=answerText.trim();
+      if(!answerText){alert('정답을 입력하세요.');return;}
+      // ✅ 사양 #8: 5분 제한
+      var useTimeLimit=box.querySelector('#answerTimeLimit');
+      var expiresAt=(useTimeLimit&&useTimeLimit.checked)?Date.now()+5*60*1000:null;
+      await createApprovalWithLog({
+        type:'answerSubmit',title:'정답 제출',answerText:answerText,
+        authorId:currentUser.id,authorName:currentUser.name,
+        votes:{},body:answerText,
+        expiresAt:expiresAt
+      });
+      try{clearLocalDraft('composer:answerSubmit');}catch(e){}
+      if(box.querySelector('#asBody')) box.querySelector('#asBody').value='';
+      await refreshAll(true);
+    });
+  }
+
+  // 정답 제출 찬반 투표
+  box.querySelectorAll('.as-vote').forEach(function(btn){
+    btn.addEventListener('click',async function(){
+      if(!isPlayer()){alert('투표 권한은 참가자에게만 있습니다.');return;}
+      var id=btn.getAttribute('data-id');
+      var ap=(appState.approvals||[]).find(function(a){return a.id===id;});if(!ap)return;
+      if(ap.status!=='pending'){alert('이미 합의가 종료된 의안입니다.');return;}
+      ap.votes=ap.votes||{};
+      if(ap.votes[currentUser.id]!==undefined){alert('이미 투표하셨습니다.');return;}
+      var vote=btn.getAttribute('data-vote')==='yes';
+      ap.votes[currentUser.id]=vote;
+      var totalPlayers=appState.roster.filter(function(r){return r.role==='참가자';}).length;
+      var yesCount=Object.keys(ap.votes).filter(function(k){return ap.votes[k]===true;}).length;
+      var requiredVotes=Math.ceil(totalPlayers*4/5);
+      if(ap.status==='pending'&&yesCount>=requiredVotes){
+        ap.status='approved';ap.passed=true;ap.approvedAt=Date.now();
+        try{
+          await createApprovalWithLog({type:'answerEval',title:'정답 평가 · '+escapeHtml(ap.answerText.substring(0,30))+'...',answerText:ap.answerText,relatedSubmissionId:ap.id,authorId:null,authorName:'시스템',scores:{},body:ap.answerText});
+        }catch(e){console.error('answerEval creation failed',e);}
+      }
+      ap.updatedAt=Date.now();
+      await saveApproval(ap);
+      await saveAudit('answer_submit_vote',{approvalId:ap.id,voter:currentUser?currentUser.id:null,vote:vote?'yes':'no',totalVotes:yesCount,required:requiredVotes});
+      await refreshAll(true);
+    });
+  });
+
+  // 정답 판정 평가 제출 (투표 탭에서도 동일)
+  box.querySelectorAll('.ae-submit').forEach(function(btn){
+    btn.addEventListener('click',async function(){
+      if(!isJudge()){alert('평가 제출 권한은 평가자에게만 있습니다.');return;}
+      var id=btn.getAttribute('data-id');
+      var ap=(appState.approvals||[]).find(function(a){return a.id===id;});if(!ap)return;
+      if(ap.type!=='answerEval')return;
+      if(ap.status!=='pending'){alert('이미 종료된 평가입니다.');return;}
+      ap.scores=ap.scores||{};
+      if(ap.scores[currentUser.id]){alert('이미 평가를 제출하셨습니다.');return;}
+      ap.scores[currentUser.id]={};
+      CATS.forEach(function(cat){var scoreEl=document.getElementById('score_'+ap.id+'_'+cat.key);var v=scoreEl?Number(scoreEl.value):NaN;if(isNaN(v))v=0;if(v<0)v=0;if(v>10)v=10;ap.scores[currentUser.id][cat.key]=v;});
+      try{clearLocalDraft('approval:scores:'+ap.id);}catch(e){}
+      var judges=appState.roster.filter(function(r){return r.role==='평가자';});
+      var judgesEvaluated=Object.keys(ap.scores).length;
+      var totalJudges=judges.length;
+      if(judgesEvaluated===totalJudges&&totalJudges>0){
+        var judgesApproved=0;
+        Object.keys(ap.scores).forEach(function(jid){var jScores=ap.scores[jid];var jAverages={};CATS.forEach(function(cat){jAverages[cat.key]=jScores[cat.key]||0;});var jAvgAll=Object.keys(jAverages).reduce(function(a,k){return a+jAverages[k];},0)/CATS.length;var jAllCatsPassed=true;CATS.forEach(function(cat){if(cat.key==='sim'){if(jAverages[cat.key]<7)jAllCatsPassed=false;}else{if(jAverages[cat.key]<=6)jAllCatsPassed=false;}});var jPassed=jAllCatsPassed&&(jAvgAll>8);if(jPassed)judgesApproved++;});
+        var consensusPassed=judgesApproved>=Math.ceil(totalJudges*0.6);
+        ap.consensus={approvedCount:judgesApproved,totalCount:totalJudges,percentage:(judgesApproved/totalJudges*100).toFixed(2),passed:consensusPassed,finalResult:consensusPassed?'correct':'incorrect'};
+        ap.status=consensusPassed?'approved':'rejected';ap.reviewedBy=currentUser.id;ap.reviewedAt=Date.now();
+      }
+      ap.updatedAt=Date.now();
+      await saveApproval(ap);
+      await saveAudit('answer_eval_submit',{approvalId:ap.id,judge:currentUser?currentUser.id:null,judgesEvaluated:judgesEvaluated,totalJudges:totalJudges});
+      await refreshAll(true);
+    });
+  });
+
   renderComposerSection();
 }
 
@@ -1370,6 +1650,10 @@ function renderComposerSection(){
       else if(preset==='free'){override={percent:Number(document.getElementById('freePct').value)||50};}
       var expEl=document.getElementById('consentExpire');
       var expiresAt=expEl&&expEl.value?Date.now()+Number(expEl.value)*1000:null;
+      // ✅ 사양 #8: 질문 투표(qagree)·참가자 투표(submission 포함)에 5분 제한 자동 적용
+      if(!expiresAt&&(preset==='qagree'||preset==='submission'||(voterRole==='참가자'&&preset!=='free'))){
+        expiresAt=Date.now()+5*60*1000;
+      }
       await createPollWithLog({type:'consent',preset:preset,title:title,detail:document.getElementById('consentDetail')?document.getElementById('consentDetail').value.trim():'',denom:denom,voterRole:voterRole,override:override,expiresAt:expiresAt});
       try{clearLocalDraft('composer:consent');}catch(e){}
       composerOpen=false;await refreshAll(true);
@@ -1453,26 +1737,39 @@ var done=aps.filter(function(a){
     appState.approvalComposeType = defaultAType;
   }
 
-  // ==================== 섹션 2: 참가자 - 정답 제출 합의 (Phase 1) ====================
-  if(isPlayer()){
-    html+='<section><div class="section-label"><span class="no mono">제출</span><span class="name">정답 제출 합의</span></div>'+
-      '<div class="card" id="answerSubmitComposer">'+
-        '<div class="hint" style="margin-bottom:10px;">🎯 참가자들이 함께 정답을 제시합니다. (전체 참가자의 5분의 4 이상 찬성 필요)</div>'+
-        '<div class="field"><label for="asBody">정답</label><textarea id="asBody" placeholder="최종 정답을 입력하세요..."></textarea></div>'+
-        '<button id="submitAnswerProposal" type="button" class="btn btn-primary">정답 제출</button>'+
-      '</div></section>';
-  }
-
-  // ==================== 섹션 3: 평가자 - 정답 평가 (Phase 2) ====================
+  // ✅ 정답 판정 투표 섹션 (평가자용 - 승인 탭으로 이동)
   if(isJudge()){
-    html+='<section><div class="section-label"><span class="no mono">제출</span><span class="name">정답 평가</span></div>'+
-      '<div class="hint" style="margin-bottom:10px;">📊 참가자들이 제출한 정답을 5개 항목으로 평가합니다.</div>'+
-      '<div class="card" id="answerEvalComposer" style="display:none;">'+
-        '<p style="font-size:12px;color:var(--text-soft);">평가 대상 정답이 없습니다. 참가자들이 정답을 제출한 후 평가를 진행하세요.</p>'+
-      '</div></section>';
+    var pendingEvals=(appState.approvals||[]).filter(function(a){return a.type==='answerEval'&&a.status==='pending';});
+    if(pendingEvals.length>0){
+      html+='<section><div class="section-label"><span class="no mono">판정</span><span class="name">정답 판정 투표 ('+pendingEvals.length+'건)</span></div>';
+      pendingEvals.forEach(function(a){
+        a.scores=a.scores||{};
+        var judgesEval=Object.keys(a.scores).length;
+        var totalJ=appState.roster.filter(function(r){return r.role==='평가자';}).length;
+        var myScores=a.scores[currentUser.id];
+        html+='<div class="card" style="margin-top:8px;" data-eval-id="'+escapeHtml(a.id)+'">'+
+          '<div style="font-size:12px;color:var(--text-soft);margin-bottom:4px;">📝 평가 대상 정답</div>'+
+          '<div style="padding:10px;background:rgba(100,150,200,0.1);border-radius:6px;margin-bottom:10px;font-size:14px;">'+escapeHtml(a.answerText)+'</div>'+
+          '<div style="font-size:12px;margin-bottom:8px;">평가 진행: '+judgesEval+' / '+totalJ+' 평가자</div>';
+        if(!myScores){
+          html+='<div style="margin-bottom:12px;"><div style="font-weight:600;margin-bottom:8px;">📊 평가 항목 (0-10점)</div>';
+          CATS.forEach(function(cat){
+            html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'+
+              '<label style="width:70px;font-size:12.5px;">'+escapeHtml(cat.label)+'</label>'+
+              '<input type="number" class="ae-score" id="score_'+escapeHtml(a.id)+'_'+escapeHtml(cat.key)+'" min="0" max="10" value="5" style="width:50px;"/>'+
+              '<span style="font-size:11px;color:var(--text-soft);">점</span>'+
+            '</div>';
+          });
+          html+='<button type="button" class="btn btn-primary btn-sm ae-submit" data-id="'+escapeHtml(a.id)+'">평가 제출</button></div>';
+        }else{
+          html+='<div style="padding:8px;background:rgba(46,108,94,0.1);border-radius:6px;font-size:12px;margin-bottom:8px;">✅ 귀하의 평가 완료</div>';
+        }
+        html+='</div>';
+      });
+      html+='</section>';
+    }
   }
 
-  // 참가자: 질문 합의 후 질문 제출 (단, 여기서는 approve 탭이므로 간략 안내)
   // 이의제기 현황
   if(objected.length>0){
     html+='<section><div class="section-label"><span class="no mono">이의</span><span class="name">이의제기 검토 중</span></div>';
@@ -1557,30 +1854,6 @@ var done=aps.filter(function(a){
       try{clearLocalDraft('composer:approval');}catch(e){}
       document.getElementById('apTitle').value='';
       document.getElementById('apBody').value='';
-      await refreshAll(true);
-    });
-  }
-
-  // 참가자 정답 제출 폼 이벤트
-  if(isPlayer()){
-    var submitAnswerProposal = document.getElementById('submitAnswerProposal');
-    // draft 복원
-    try{var dasb=loadLocalDraft('composer:answerSubmit'); if(dasb && document.getElementById('asBody')) document.getElementById('asBody').value=dasb.body||'';}catch(e){}
-    if(document.getElementById('asBody')) document.getElementById('asBody').addEventListener('input',function(){ try{ saveLocalDraft('composer:answerSubmit',{body:document.getElementById('asBody')?document.getElementById('asBody').value.trim():''}); }catch(e){} });
-    if(submitAnswerProposal) submitAnswerProposal.addEventListener('click',async function(){
-      var answerText = document.getElementById('asBody').value.trim();
-      if(!answerText){alert('정답을 입력하세요.');return;}
-      await createApprovalWithLog({
-        type:'answerSubmit',
-        title:'정답 제출',
-        answerText:answerText,
-        authorId:currentUser.id,
-        authorName:currentUser.name,
-        votes:{},
-        body:answerText
-      });
-      try{clearLocalDraft('composer:answerSubmit');}catch(e){}
-      document.getElementById('asBody').value='';
       await refreshAll(true);
     });
   }
@@ -1846,11 +2119,17 @@ if(!compact){
     }
 }
 
-  // 이의제기 내용 표시 (참가자에게는 제기 사실만 공개, 내용은 비공개)
-  if(a.objectionBody){
-    if(isPlayer()){
-      html+='<div class="a-objection">⚖ 이의제기가 접수되었습니다. (내용은 비공개)</div>';
-    } else {
+  // ✅ 사양 #2: 이의제기 진행 중(pending/objected) 참가자 정보 비공개
+  if(a.status==='pending'||a.status==='objected'){
+    if(isPlayer()&&a.objectionBody){
+      // 이의제기 진행 중: 참가자에게는 진행 사실만
+      html+='<div class="objection-pending-notice">⏳ 현재 이의제기가 진행 중입니다.<br/>최종 결정 이후 결과가 공개됩니다.</div>';
+    } else if(!isPlayer()&&a.objectionBody){
+      html+='<div class="a-objection">⚖ 이의제기 ('+escapeHtml(a.objectorName||'?')+'): '+escapeHtml(a.objectionBody)+'</div>';
+    }
+  } else {
+    // 확정 이후: 이의제기 내용 공개
+    if(a.objectionBody){
       html+='<div class="a-objection">⚖ 이의제기 ('+escapeHtml(a.objectorName||'?')+'): '+escapeHtml(a.objectionBody)+'</div>';
     }
   }
@@ -1858,7 +2137,7 @@ if(!compact){
   if(a.objectionOpinion && !isPlayer()){
     html+='<div class="a-reason violet">📋 원심 의견: '+escapeHtml(a.objectionOpinion)+'</div>';
   }
-  // ← 이의제기 인용 사유 표시 — 참가자에게는 비공개
+  // 이의제기 인용 사유 표시 — 참가자에게는 비공개
   if(a.objectionAcceptReason && !isPlayer()){
     html+='<div class="a-reason green">✅ 이의 인용 사유: '+escapeHtml(a.objectionAcceptReason)+'</div>';
   }
@@ -2365,8 +2644,13 @@ function renderQuestionTab(){
   var qs=appState.questions;
   var html='';
 
+  // 방 폐쇄 시 안내
+  if(appState.roomClosed&&!isRoomAdmin()){
+    html+='<div class="room-closed-banner">🚫 방이 폐쇄되어 새 질문을 제출할 수 없습니다.</div>';
+  }
+
   // 참가자: 질문 제출 폼
-  if(isPlayer()){
+  if(isPlayer()&&!isSpectator()&&!isRoomActionBlocked('question')){
     html+='<section><div class="section-label"><span class="no mono">질문</span><span class="name">질문 제시</span></div>'+
       '<div class="card">'+
         '<p style="font-size:12.5px;color:var(--text-soft);margin:0 0 12px;">합의 절차를 거쳐 결정된 질문을 제출하세요. 질문은 원칙적으로 예·아니요로 답변 가능한 형태여야 합니다.</p>'+
@@ -2465,23 +2749,25 @@ function renderQuestionItem(q, idx, allQs){
     '</div>';
   }
 
-  // 출제자: 질문 반려 버튼 (반려 사유 입력 → 승인 요청)
+  // ✅ 사양 #4: 출제자 질문 반려 창 - 상태값 기반으로 관리 (Firebase 갱신에도 닫히지 않음)
   if(isQuestioner()&&q.status==='pending'){
-    // 이미 반려 승인 요청이 있는 경우 버튼 숨김
     var hasRejectAp=(appState.approvals||[]).some(function(a){return a.type==='questionReject'&&a.relatedQuestionId===q.id&&a.status==='pending';});
     if(!hasRejectAp){
-      html+='<div style="margin-top:8px;">'+
-        '<div id="qreject_form_'+escapeHtml(q.id)+'" style="display:none;">'+
+      var rfState=appState._rejectFormState[q.id]||{open:false,reason:'',note:''};
+      var formDisplay=rfState.open?'block':'none';
+      var openBtnDisplay=rfState.open?'none':'';
+      html+='<div style="margin-top:8px;" class="q-reject-wrap" data-qid="'+escapeHtml(q.id)+'">'+
+        '<div class="q-reject-form" id="qreject_form_'+escapeHtml(q.id)+'" style="display:'+formDisplay+';">'+
           '<div class="field" style="margin-bottom:6px;"><label style="font-size:12px;">반려 사유 (필수)</label>'+
-            '<textarea class="q-reject-reason" id="qreject_reason_'+escapeHtml(q.id)+'" style="min-height:60px;" placeholder="반려 사유를 입력하세요..."></textarea></div>'+
+            '<textarea class="q-reject-reason" id="qreject_reason_'+escapeHtml(q.id)+'" style="min-height:60px;" placeholder="반려 사유를 입력하세요...">'+escapeHtml(rfState.reason)+'</textarea></div>'+
           '<div class="field" style="margin-bottom:6px;"><label style="font-size:12px;">평가자에게 전달할 설명 (선택)</label>'+
-            '<textarea class="q-reject-note" id="qreject_note_'+escapeHtml(q.id)+'" style="min-height:40px;" placeholder="추가 설명이 있으면 입력하세요..."></textarea></div>'+
+            '<textarea class="q-reject-note" id="qreject_note_'+escapeHtml(q.id)+'" style="min-height:40px;" placeholder="추가 설명이 있으면 입력하세요...">'+escapeHtml(rfState.note)+'</textarea></div>'+
           '<div class="btn-row">'+
             '<button class="btn btn-sm btn-danger q-reject-submit" data-qid="'+escapeHtml(q.id)+'">반려 승인 요청</button>'+
             '<button class="btn btn-sm btn-ghost q-reject-cancel" data-qid="'+escapeHtml(q.id)+'">취소</button>'+
           '</div>'+
         '</div>'+
-        '<button class="btn btn-sm btn-danger q-reject-open" data-qid="'+escapeHtml(q.id)+'" style="margin-top:4px;">질문 반려</button>'+
+        '<button class="btn btn-sm btn-danger q-reject-open" data-qid="'+escapeHtml(q.id)+'" style="margin-top:4px;display:'+openBtnDisplay+';">질문 반려</button>'+
       '</div>';
     } else {
       html+='<div style="margin-top:8px;font-size:12px;color:var(--gold);">⏳ 반려 승인 요청이 평가자 검토 중입니다.</div>';
@@ -2556,10 +2842,26 @@ function attachQuestionEvents(box){
     });
   });
 
+  // ✅ 사양 #4: 반려 창 이벤트 — 상태값(appState._rejectFormState)으로 관리
+  // 입력 내용 실시간 상태 저장 (DOM 재생성 후에도 유지)
+  box.querySelectorAll('.q-reject-reason,.q-reject-note').forEach(function(ta){
+    ta.addEventListener('input',function(){
+      var wrap=ta.closest('.q-reject-wrap');
+      var qid=wrap?wrap.getAttribute('data-qid'):null;
+      if(!qid) return;
+      if(!appState._rejectFormState[qid]) appState._rejectFormState[qid]={open:true,reason:'',note:''};
+      if(ta.classList.contains('q-reject-reason')) appState._rejectFormState[qid].reason=ta.value;
+      else appState._rejectFormState[qid].note=ta.value;
+    });
+  });
+
   // 질문 반려 버튼: 폼 열기
   box.querySelectorAll('.q-reject-open').forEach(function(btn){
     btn.addEventListener('click',function(){
       var qid=btn.getAttribute('data-qid');
+      // 상태에 open=true 저장 → 다음 렌더링 시에도 열린 채로 복원
+      if(!appState._rejectFormState[qid]) appState._rejectFormState[qid]={open:false,reason:'',note:''};
+      appState._rejectFormState[qid].open=true;
       var form=document.getElementById('qreject_form_'+qid);
       if(form){ form.style.display='block'; btn.style.display='none'; }
     });
@@ -2569,6 +2871,8 @@ function attachQuestionEvents(box){
   box.querySelectorAll('.q-reject-cancel').forEach(function(btn){
     btn.addEventListener('click',function(){
       var qid=btn.getAttribute('data-qid');
+      // 상태 초기화 → 다음 렌더링 시 닫힌 상태로 복원
+      appState._rejectFormState[qid]={open:false,reason:'',note:''};
       var form=document.getElementById('qreject_form_'+qid);
       var openBtn=box.querySelector('.q-reject-open[data-qid="'+qid+'"]');
       if(form){ form.style.display='none'; }
@@ -2588,19 +2892,22 @@ function attachQuestionEvents(box){
       var qs2=await fetchQuestions();
       var q=qs2.find(function(x){return x.id===qid;});
       if(!q)return;
-      // 반려를 approval 요청으로 생성 (평가자 승인 필요)
+      // ✅ 사양 #3: publicReason / internalReason 분리
       await createApprovalWithLog({
         type:'questionReject',
         title:'질문 Q'+q.no+' 반려: '+q.text.slice(0,30)+(q.text.length>30?'...':''),
         body:'질문 내용:\n\n'+q.text+'\n\n반려 사유:\n'+reason+(note?'\n\n출제자 설명:\n'+note:''),
+        publicReason:reason,       // 참가자 공개 반려 사유
+        internalReason:note||null, // 내부 검토용 (비공개)
         rejectReason:reason,
         authorNote:note||null,
         authorId:currentUser.id,
         authorName:currentUser.name,
         relatedQuestionId:qid
       });
+      // 상태 초기화
+      appState._rejectFormState[qid]={open:false,reason:'',note:''};
       await refreshAll(true);
-      // 승인 탭으로 전환
       activeTab='approve';
       renderTabContent();
     });
@@ -2616,9 +2923,11 @@ function renderRosterTab(){
   var judges=appState.roster.filter(function(r){return r.role==='평가자';});
   var questioners=appState.roster.filter(function(r){return r.role==='출제자';});
   var players=appState.roster.filter(function(r){return r.role==='참가자';});
+  var spectators=appState.roster.filter(function(r){return r.role==='관전자';});
   var chief=appState.chiefId?appState.roster.find(function(r){return r.id===appState.chiefId;}):null;
+  var totalVisible=appState.roster.length;
 
-  var html='<section><div class="section-label"><span class="no mono">명부</span><span class="name">참여자 '+appState.roster.length+'명</span></div>'+
+  var html='<section><div class="section-label"><span class="no mono">명부</span><span class="name">참여자 '+totalVisible+'명</span></div>'+
     '<div class="card">';
 
   if(chief){
@@ -2639,6 +2948,7 @@ function renderRosterTab(){
   '<div class="chip-group"><div class="cap">참가자 '+players.length+'명</div><div class="chips">'+
     (players.length?players.map(function(p){return'<span class="chip">'+escapeHtml(p.name)+'</span>';}).join(''):'<span class="chip">없음</span>')+
   '</div></div>'+
+  (spectators.length?'<div class="chip-group"><div class="cap">관전자 '+spectators.length+'명</div><div class="chips">'+spectators.map(function(p){return'<span class="chip" style="opacity:0.75;">👁 '+escapeHtml(p.name)+'</span>';}).join('')+'</div></div>':'')+
   '</div></section>';
 
   // 출제자가 평가장 선임한 경우 이미 투표 탭에서 하므로 여기선 안내만
@@ -2704,6 +3014,245 @@ function renderRosterTab(){
   }
 }
 
+/* =====================================================
+   TAB: 관리 (Admin / Room Admin) — 사양 #10~#23
+===================================================== */
+function renderAdminTab(){
+  if(!isRoomAdmin()){
+    document.getElementById('tabContent').innerHTML='<div class="card empty">관리 권한이 없습니다.</div>';
+    return;
+  }
+  var box=document.getElementById('tabContent');
+  var s=appState.roomSettings||{};
+  var html='';
+
+  // ---- 방 상태 ----
+  html+='<section><div class="section-label"><span class="no mono">방 상태</span><span class="name">방 관리</span></div>'+
+    '<div class="card dark">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'+
+        '<span style="font-size:13px;font-weight:600;">방 폐쇄 여부</span>'+
+        '<span class="status-pill '+(appState.roomClosed?'closed':'open')+'">'+(appState.roomClosed?'🚫 폐쇄 중':'✅ 정상 운영')+'</span>'+
+      '</div>'+
+      '<div class="btn-row">'+
+        (appState.roomClosed?
+          '<button id="roomOpenBtn" class="btn btn-approve btn-sm">방 재개</button>'
+          :'<button id="roomCloseBtn" class="btn btn-danger btn-sm">방 폐쇄</button>')+
+      '</div>'+
+      '<div class="hint" style="margin-top:8px;font-size:11px;">폐쇄 시 신규 입장·질문·투표·초대가 차단됩니다. 관리자·방관리자는 계속 사용 가능합니다.</div>'+
+    '</div></section>';
+
+  // ---- 강제 설정 ----
+  var FORCE_SETTINGS=[
+    {key:'autoRemove',label:'창 닫을 때 자동 미참여'},
+    {key:'clearGame',label:'창 닫을 때 게임 기록 초기화'},
+    {key:'allowSpectator',label:'관전자 허용'},
+    {key:'allowQuestion',label:'질문 허용'},
+    {key:'allowVote',label:'투표 허용'},
+    {key:'allowAnswer',label:'정답 제출 허용'},
+    {key:'allowChat',label:'채팅 허용'}
+  ];
+  html+='<section><div class="section-label"><span class="no mono">설정 강제</span><span class="name">설정 잠금 — 사양 #19~#22</span></div>'+
+    '<div class="card">';
+  FORCE_SETTINGS.forEach(function(cfg){
+    var state=getSettingState(s,cfg.key);
+    html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:10px;">'+
+      '<span style="font-size:13px;">'+escapeHtml(cfg.label)+'</span>'+
+      '<div style="display:flex;gap:6px;">'+
+        '<button class="btn-extend admin-force-btn" data-key="'+escapeHtml(cfg.key)+'" data-val="user" style="'+(state==='user'?'background:var(--teal);color:#fff;':'')+'" title="사용자 선택">자유</button>'+
+        '<button class="btn-extend admin-force-btn" data-key="'+escapeHtml(cfg.key)+'" data-val="force_on" style="'+(state==='force_on'?'background:var(--gold);color:var(--ink-bg);':'')+'" title="강제 활성">🔒ON</button>'+
+        '<button class="btn-extend admin-force-btn" data-key="'+escapeHtml(cfg.key)+'" data-val="force_off" style="'+(state==='force_off'?'background:var(--stamp-red);color:#fff;':'')+'" title="강제 비활성">🔒OFF</button>'+
+      '</div>'+
+    '</div>'+
+    (state!=='user'?'<div class="setting-locked"><span class="lock-icon">🔒</span>관리자에 의해 고정되었습니다.</div>':'');
+  });
+  html+='</div></section>';
+
+  // ---- 참여자 역할 변경 ----
+  html+='<section><div class="section-label"><span class="no mono">역할</span><span class="name">역할 지정 — 사양 #13</span></div>'+
+    '<div class="card">'+
+    '<div class="field"><label for="adminRoleTarget">대상 참여자</label>'+
+    '<select id="adminRoleTarget">'+
+      appState.roster.map(function(r){return'<option value="'+escapeHtml(r.id)+'">'+escapeHtml(r.name)+' (현재: '+escapeHtml(r.role)+')</option>';}).join('')+
+    '</select></div>'+
+    '<div class="field"><label for="adminRoleValue">새 역할</label>'+
+    '<select id="adminRoleValue">'+
+      ['평가자','출제자','참가자','관전자','방관리자'].map(function(r){return'<option value="'+r+'">'+r+'</option>';}).join('')+
+    '</select></div>'+
+    '<button id="adminAssignRoleBtn" class="btn btn-primary btn-sm" style="margin-top:6px;">역할 지정</button>'+
+    '</div></section>';
+
+  // ---- 강제 퇴장 ----
+  html+='<section><div class="section-label"><span class="no mono">퇴장</span><span class="name">강제 퇴장 — 사양 #15</span></div>'+
+    '<div class="card">'+
+    '<div class="field"><label for="adminKickTarget">대상 참여자</label>'+
+    '<select id="adminKickTarget">'+
+      appState.roster.filter(function(r){return!isAdmin()||r.id!==currentUser.id;}).map(function(r){return'<option value="'+escapeHtml(r.id)+'">'+escapeHtml(r.name)+' ('+escapeHtml(r.role)+')</option>';}).join('')+
+    '</select></div>'+
+    '<div class="btn-row">'+
+      '<button id="adminKickBtn" class="btn btn-danger btn-sm">방출</button>'+
+      '<button id="adminBanBtn" class="btn btn-danger btn-sm" style="opacity:0.7;">재입장 금지</button>'+
+    '</div>'+
+    '</div></section>';
+
+  // ---- 이름 변경 ----
+  html+='<section><div class="section-label"><span class="no mono">이름</span><span class="name">이름 변경 — 사양 #16</span></div>'+
+    '<div class="card">'+
+    '<div class="field"><label for="adminRenameTarget">대상 참여자</label>'+
+    '<select id="adminRenameTarget">'+
+      appState.roster.map(function(r){return'<option value="'+escapeHtml(r.id)+'">'+escapeHtml(r.name)+'</option>';}).join('')+
+    '</select></div>'+
+    '<div class="field"><label for="adminNewName">새 이름</label><input type="text" id="adminNewName" maxlength="12" placeholder="새 이름"/></div>'+
+    '<button id="adminRenameBtn" class="btn btn-primary btn-sm" style="margin-top:4px;">이름 변경</button>'+
+    '</div></section>';
+
+  // ---- 초대 ----
+  html+='<section><div class="section-label"><span class="no mono">초대</span><span class="name">초대 — 사양 #14</span></div>'+
+    '<div class="card dark">'+
+    '<div style="font-size:12.5px;margin-bottom:10px;">현재 페이지 링크를 공유하면 초대됩니다.</div>'+
+    '<button id="copyInviteLinkBtn" class="btn btn-secondary btn-sm">🔗 초대 링크 복사</button>'+
+    '</div></section>';
+
+  // ---- 로그 열람 ----
+  html+='<section><div class="section-label"><span class="no mono">로그</span><span class="name">방 로그 — 사양 #23</span></div>'+
+    '<button id="loadRoomLogsBtn" class="btn btn-ghost btn-sm" style="margin-bottom:8px;">로그 불러오기</button>'+
+    '<div id="roomLogList"></div></section>';
+
+  box.innerHTML=html;
+
+  // 방 열기/닫기
+  var closeBtn=box.querySelector('#roomCloseBtn');
+  if(closeBtn) closeBtn.addEventListener('click',async function(){
+    if(!confirm('방을 폐쇄합니까? 신규 입장·질문·투표가 차단됩니다.'))return;
+    await saveRoomClosed(true);
+    await addRoomLog('방 폐쇄','관리자에 의해 폐쇄됨');
+    await refreshAll(true);
+  });
+  var openBtn=box.querySelector('#roomOpenBtn');
+  if(openBtn) openBtn.addEventListener('click',async function(){
+    await saveRoomClosed(false);
+    await addRoomLog('방 재개','관리자에 의해 재개됨');
+    await refreshAll(true);
+  });
+
+  // 강제 설정 버튼
+  box.querySelectorAll('.admin-force-btn').forEach(function(btn){
+    btn.addEventListener('click',async function(){
+      var key=btn.getAttribute('data-key');
+      var val=btn.getAttribute('data-val');
+      var ns=Object.assign({},appState.roomSettings);
+      ns[key]=val;
+      await saveRoomSettings(ns);
+      await addRoomLog('설정 강제 변경',key+' → '+val);
+      await refreshAll(false);
+      activeTab='admin';renderTabContent();
+    });
+  });
+
+  // 역할 지정
+  var assignRoleBtn=box.querySelector('#adminAssignRoleBtn');
+  if(assignRoleBtn) assignRoleBtn.addEventListener('click',async function(){
+    var target=box.querySelector('#adminRoleTarget');
+    var roleVal=box.querySelector('#adminRoleValue');
+    if(!target||!target.value||!roleVal)return;
+    var id=target.value;
+    var newRole=roleVal.value;
+    var person=appState.roster.find(function(r){return r.id===id;});
+    if(!person){alert('참여자를 찾을 수 없습니다.');return;}
+    var oldRole=person.role;
+    person.role=newRole;
+    await storageSet('participant:'+id,JSON.stringify(person));
+    await addRoomLog('역할 변경',escapeHtml(person.name)+': '+oldRole+' → '+newRole);
+    await saveAudit('role_changed',{targetId:id,targetName:person.name,oldRole:oldRole,newRole:newRole,by:currentUser?currentUser.id:null});
+    await refreshAll(true);
+  });
+
+  // 강제 퇴장
+  var kickBtn=box.querySelector('#adminKickBtn');
+  if(kickBtn) kickBtn.addEventListener('click',async function(){
+    var target=box.querySelector('#adminKickTarget');
+    if(!target||!target.value)return;
+    var id=target.value;
+    var person=appState.roster.find(function(r){return r.id===id;});
+    if(!confirm((person?person.name:id)+'을(를) 방출합니까?'))return;
+    await storageDelete('participant:'+id);
+    try{remove(ref(db,'participants/'+id));}catch(e){}
+    await addRoomLog('강제 퇴장',escapeHtml(person?person.name:id)+' 방출됨');
+    await saveAudit('participant_kicked',{targetId:id,targetName:person?person.name:'?',by:currentUser?currentUser.id:null});
+    await refreshAll(true);
+  });
+  var banBtn=box.querySelector('#adminBanBtn');
+  if(banBtn) banBtn.addEventListener('click',async function(){
+    var target=box.querySelector('#adminKickTarget');
+    if(!target||!target.value)return;
+    var id=target.value;
+    var person=appState.roster.find(function(r){return r.id===id;});
+    if(!confirm((person?person.name:id)+'을(를) 재입장 금지합니까?'))return;
+    await storageDelete('participant:'+id);
+    await storageSet('banned:'+id,'true');
+    try{remove(ref(db,'participants/'+id));}catch(e){}
+    await addRoomLog('재입장 금지',escapeHtml(person?person.name:id)+' 금지됨');
+    await saveAudit('participant_banned',{targetId:id,targetName:person?person.name:'?',by:currentUser?currentUser.id:null});
+    await refreshAll(true);
+  });
+
+  // 이름 변경
+  var renameBtn=box.querySelector('#adminRenameBtn');
+  if(renameBtn) renameBtn.addEventListener('click',async function(){
+    var target=box.querySelector('#adminRenameTarget');
+    var newNameEl=box.querySelector('#adminNewName');
+    if(!target||!target.value||!newNameEl)return;
+    var newName=newNameEl.value.trim();
+    if(!newName){alert('새 이름을 입력하세요.');return;}
+    var id=target.value;
+    var person=appState.roster.find(function(r){return r.id===id;});
+    if(!person){alert('참여자를 찾을 수 없습니다.');return;}
+    var oldName=person.name;
+    person.name=newName;
+    await storageSet('participant:'+id,JSON.stringify(person));
+    // 이름 변경 이력 저장
+    var histKey='name_history:'+id+':'+genId();
+    await storageSet(histKey,JSON.stringify({id:id,oldName:oldName,newName:newName,changedBy:currentUser?currentUser.id:null,changedAt:Date.now()}));
+    await addRoomLog('이름 변경',oldName+' → '+newName);
+    await saveAudit('name_changed',{targetId:id,oldName:oldName,newName:newName,by:currentUser?currentUser.id:null});
+    newNameEl.value='';
+    await refreshAll(true);
+  });
+
+  // 초대 링크 복사
+  var copyInviteBtn=box.querySelector('#copyInviteLinkBtn');
+  if(copyInviteBtn) copyInviteBtn.addEventListener('click',function(){
+    try{
+      navigator.clipboard.writeText(window.location.href).then(function(){
+        copyInviteBtn.textContent='✓ 복사됨';
+        setTimeout(function(){copyInviteBtn.textContent='🔗 초대 링크 복사';},2000);
+      });
+    }catch(e){
+      // fallback
+      var ta=document.createElement('textarea');ta.value=window.location.href;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+      copyInviteBtn.textContent='✓ 복사됨';
+      setTimeout(function(){copyInviteBtn.textContent='🔗 초대 링크 복사';},2000);
+    }
+  });
+
+  // 로그 불러오기
+  var loadLogsBtn=box.querySelector('#loadRoomLogsBtn');
+  if(loadLogsBtn) loadLogsBtn.addEventListener('click',async function(){
+    loadLogsBtn.textContent='불러오는 중...';loadLogsBtn.disabled=true;
+    var logs=await fetchRoomLogs();
+    var logBox=box.querySelector('#roomLogList');
+    if(!logBox){loadLogsBtn.disabled=false;return;}
+    if(!logs||logs.length===0){logBox.innerHTML='<div class="card empty">로그가 없습니다.</div>';loadLogsBtn.disabled=false;loadLogsBtn.textContent='로그 불러오기';return;}
+    logBox.innerHTML=logs.slice(0,50).map(function(l){
+      return'<div class="log-item">'+
+        '<div class="log-time">'+new Date(l.ts).toLocaleString('ko-KR')+' · '+escapeHtml(l.actor||'?')+'</div>'+
+        '<div class="log-action">'+escapeHtml(l.action)+'</div>'+
+        (l.detail?'<div class="log-detail">'+escapeHtml(l.detail)+'</div>':'')+
+      '</div>';
+    }).join('');
+    loadLogsBtn.disabled=false;loadLogsBtn.textContent='새로고침';
+  });
+}
+
 /* ===== refresh loop ===== */
 async function refreshAll(force){
   var savedScrollY = window.scrollY;
@@ -2738,6 +3287,8 @@ async function refreshAll(force){
   var nominationPending=await fetchNominationPending();
   var designatedQRaw=await storageGet('designatedQuestioner');
   var designatedQuestioner=safeParse(designatedQRaw,null);
+  var roomSettings=await fetchRoomSettings();
+  var roomClosed=await fetchRoomClosed();
   appState.roster=roster;
   appState.polls=polls;
   appState.approvals=approvals.filter(function(a){return!a.isNotice;}); // 공지는 별도
@@ -2746,6 +3297,8 @@ async function refreshAll(force){
   appState.chairs=chairsData||{};
   appState.nominationPending=nominationPending||null;
   appState.designatedQuestioner=designatedQuestioner||null;
+  appState.roomSettings=roomSettings||{};
+  appState.roomClosed=!!roomClosed;
 
   var active=polls.find(function(p){return p.status==='open';})||null;
   var votes=active?await fetchVotes(active.id):{};
