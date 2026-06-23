@@ -486,35 +486,44 @@ async function clearAllParticipants(){
 
 
 /* ===== archive manager UI ===== */
-// 관리자 비밀번호는 localStorage에 저장 (세션 유지)
-var ADMIN_PW_KEY='adminPw';
-function getAdminPw(){try{return window.localStorage.getItem(ADMIN_PW_KEY)||'';}catch(e){return '';}}
-function setAdminPw(pw){try{window.localStorage.setItem(ADMIN_PW_KEY,pw);}catch(e){}}
-function isAdminAuthed(){
-  var pw=getAdminPw();
-  // 비밀번호가 설정되어 있지 않으면 최초 설정 필요
-  var stored=null;
-  try{stored=window.localStorage.getItem('adminPwHash');}catch(e){}
-  if(!stored) return false;
-  return simpleHash(pw)===stored;
-}
+// 관리자 비밀번호: Firebase에 'admin_pw_hash' 키로 저장
+// 세션 내 인증 상태는 메모리 변수로만 유지 (localStorage 미사용)
+var _adminAuthedSession=false; // 현재 세션 인증 여부
+
 function simpleHash(s){
   var h=5381;for(var i=0;i<s.length;i++){h=((h<<5)+h)+s.charCodeAt(i);}
   return (h>>>0).toString(16);
 }
+async function fetchAdminPwHash(){
+  try{
+    var snapshot=await get(ref(db,'admin_pw_hash'));
+    return (snapshot&&snapshot.exists())?String(snapshot.val()).trim():null;
+  }catch(e){console.error('fetchAdminPwHash fail',e);return null;}
+}
+async function saveAdminPwHash(pw){
+  try{
+    await set(ref(db,'admin_pw_hash'), simpleHash(pw));
+  }catch(e){console.error('saveAdminPwHash fail',e);throw e;}
+}
+async function verifyAdminPw(pw){
+  var stored=await fetchAdminPwHash();
+  if(!stored) return false;
+  return simpleHash(pw)===stored;
+}
+function isAdminAuthed(){ return _adminAuthedSession; }
 
-function renderArchiveManager(keys){
-  // 기존 모달 제거
+async function renderArchiveManager(keys){
   var existing=document.getElementById('archiveModal');
   if(existing) existing.remove();
 
   var authed=isAdminAuthed();
-  var hasPw=!!(function(){try{return window.localStorage.getItem('adminPwHash');}catch(e){return null;}}());
+  var storedHash=await fetchAdminPwHash();
+  var hasPw=!!storedHash;
 
   var authHtml='';
   if(!hasPw){
     authHtml='<div class="admin-auth-box">'+
-      '<p>🔑 관리자 비밀번호를 처음 설정합니다. 삭제 기능을 사용하려면 비밀번호를 등록하세요.</p>'+
+      '<p>🔑 관리자 비밀번호를 처음 설정합니다. Firebase에 저장됩니다.</p>'+
       '<input type="password" id="adminPwInput" placeholder="비밀번호 입력"/>'+
       '<input type="password" id="adminPwConfirm" placeholder="비밀번호 확인"/>'+
       '<button class="btn btn-primary btn-sm" id="adminPwSetBtn">비밀번호 등록</button>'+
@@ -526,7 +535,17 @@ function renderArchiveManager(keys){
       '<button class="btn btn-primary btn-sm" id="adminPwAuthBtn">인증</button>'+
     '</div>';
   } else {
-    authHtml='<div style="margin-bottom:12px;font-size:12.5px;color:#9fd8c6;">✅ 관리자 인증됨 — 삭제 기능을 사용할 수 있습니다.</div>';
+    authHtml=
+      '<div style="margin-bottom:12px;font-size:12.5px;color:#9fd8c6;">✅ 관리자 인증됨 — 삭제 기능을 사용할 수 있습니다.</div>'+
+      '<details style="margin-bottom:14px;">'+
+        '<summary style="font-size:12px;color:var(--text-soft-onink);cursor:pointer;user-select:none;">🔧 비밀번호 변경</summary>'+
+        '<div class="admin-auth-box" style="margin-top:8px;">'+
+          '<p>새 비밀번호를 입력하면 Firebase에 즉시 반영됩니다.</p>'+
+          '<input type="password" id="adminPwNew" placeholder="새 비밀번호"/>'+
+          '<input type="password" id="adminPwNewConfirm" placeholder="새 비밀번호 확인"/>'+
+          '<button class="btn btn-secondary btn-sm" id="adminPwChangeBtn">비밀번호 변경</button>'+
+        '</div>'+
+      '</details>';
   }
 
   var rowsHtml=keys.map(function(k){
@@ -540,7 +559,7 @@ function renderArchiveManager(keys){
       '</div>'+
       '<div class="arc-btns">'+
         '<button class="btn btn-secondary btn-sm arc-view-btn">열람</button>'+
-        (authed?'<button class="btn btn-danger btn-sm arc-del-btn">삭제</button>':'<button class="btn btn-ghost btn-sm" disabled style="opacity:0.4;">삭제</button>')+
+        (authed?'<button class="btn btn-danger btn-sm arc-del-btn">삭제</button>':'<button class="btn btn-ghost btn-sm" disabled style="opacity:0.4;cursor:not-allowed;">삭제</button>')+
       '</div>'+
     '</div>';
   }).join('');
@@ -558,40 +577,65 @@ function renderArchiveManager(keys){
     '</div>'+
   '</div>';
 
-  document.body.insertAdjacentHTML('beforeend',modalHtml);
+  var appEl=document.getElementById('app');
+  if(appEl){appEl.insertAdjacentHTML('afterend',modalHtml);}
+  else{document.body.insertAdjacentHTML('beforeend',modalHtml);}
 
-  // 닫기
-  document.getElementById('archiveModalClose').addEventListener('click',function(){
-    var m=document.getElementById('archiveModal');if(m)m.remove();
-  });
-  document.getElementById('archiveModal').addEventListener('click',function(e){
-    if(e.target===this){this.remove();}
-  });
+  var modal=document.getElementById('archiveModal');
+  if(!modal){console.error('archiveModal not found');return;}
 
-  // 비밀번호 최초 등록
-  var pwSetBtn=document.getElementById('adminPwSetBtn');
-  if(pwSetBtn) pwSetBtn.addEventListener('click',function(){
-    var a=document.getElementById('adminPwInput');
-    var b=document.getElementById('adminPwConfirm');
+  modal.querySelector('#archiveModalClose').addEventListener('click',function(){modal.remove();});
+  modal.addEventListener('click',function(e){if(e.target===modal){modal.remove();}});
+
+  // ① 최초 등록
+  var pwSetBtn=modal.querySelector('#adminPwSetBtn');
+  if(pwSetBtn) pwSetBtn.addEventListener('click',async function(){
+    var a=modal.querySelector('#adminPwInput');
+    var b=modal.querySelector('#adminPwConfirm');
     if(!a.value){alert('비밀번호를 입력하세요.');return;}
     if(a.value!==b.value){alert('비밀번호가 일치하지 않습니다.');return;}
-    try{window.localStorage.setItem('adminPwHash',simpleHash(a.value));setAdminPw(a.value);}catch(e){}
-    var m=document.getElementById('archiveModal');if(m)m.remove();
-    renderArchiveManager(keys);
+    pwSetBtn.disabled=true;pwSetBtn.textContent='저장 중...';
+    try{
+      await saveAdminPwHash(a.value);
+      _adminAuthedSession=true;
+      await saveAudit('admin_pw_set',{by:currentUser?currentUser.id:null});
+      modal.remove();
+      await renderArchiveManager(keys);
+    }catch(e){alert('저장 실패: '+String(e));pwSetBtn.disabled=false;pwSetBtn.textContent='비밀번호 등록';}
   });
 
-  // 비밀번호 인증
-  var pwAuthBtn=document.getElementById('adminPwAuthBtn');
-  if(pwAuthBtn) pwAuthBtn.addEventListener('click',function(){
-    var a=document.getElementById('adminPwInput');
-    setAdminPw(a.value);
-    if(!isAdminAuthed()){alert('비밀번호가 틀렸습니다.');return;}
-    var m=document.getElementById('archiveModal');if(m)m.remove();
-    renderArchiveManager(keys);
+  // ② 인증
+  var pwAuthBtn=modal.querySelector('#adminPwAuthBtn');
+  if(pwAuthBtn) pwAuthBtn.addEventListener('click',async function(){
+    var a=modal.querySelector('#adminPwInput');
+    if(!a.value){alert('비밀번호를 입력하세요.');return;}
+    pwAuthBtn.disabled=true;pwAuthBtn.textContent='확인 중...';
+    var ok=await verifyAdminPw(a.value);
+    if(!ok){alert('비밀번호가 틀렸습니다.');pwAuthBtn.disabled=false;pwAuthBtn.textContent='인증';return;}
+    _adminAuthedSession=true;
+    modal.remove();
+    await renderArchiveManager(keys);
+  });
+
+  // ③ 비밀번호 변경
+  var pwChangeBtn=modal.querySelector('#adminPwChangeBtn');
+  if(pwChangeBtn) pwChangeBtn.addEventListener('click',async function(){
+    var a=modal.querySelector('#adminPwNew');
+    var b=modal.querySelector('#adminPwNewConfirm');
+    if(!a.value){alert('새 비밀번호를 입력하세요.');return;}
+    if(a.value!==b.value){alert('비밀번호가 일치하지 않습니다.');return;}
+    pwChangeBtn.disabled=true;pwChangeBtn.textContent='변경 중...';
+    try{
+      await saveAdminPwHash(a.value);
+      await saveAudit('admin_pw_changed',{by:currentUser?currentUser.id:null});
+      alert('비밀번호가 변경되었습니다.');
+      a.value='';b.value='';
+      pwChangeBtn.disabled=false;pwChangeBtn.textContent='비밀번호 변경';
+    }catch(e){alert('변경 실패: '+String(e));pwChangeBtn.disabled=false;pwChangeBtn.textContent='비밀번호 변경';}
   });
 
   // 열람
-  document.querySelectorAll('.arc-view-btn').forEach(function(btn){
+  modal.querySelectorAll('.arc-view-btn').forEach(function(btn){
     btn.addEventListener('click',async function(){
       var row=btn.closest('.archive-row');
       var key=row.getAttribute('data-key');
@@ -599,17 +643,14 @@ function renderArchiveManager(keys){
       if(!data){alert('데이터를 찾을 수 없습니다.');return;}
       var w=window.open('','_blank');
       if(w){
-        w.document.write('<html><head><meta charset="utf-8"><title>Archive '+escapeHtml(key)+'</title><style>body{font-family:monospace;background:#1a1a1a;color:#e0e0e0;padding:20px;}pre{white-space:pre-wrap;word-break:break-all;}</style></head><body><pre>'+escapeHtml(JSON.stringify(data,null,2))+'</pre></body></html>');
+        w.document.write('<html><head><meta charset="utf-8"><title>'+escapeHtml(key)+'</title><style>body{font-family:monospace;background:#1a1a1a;color:#e0e0e0;padding:20px;}pre{white-space:pre-wrap;word-break:break-all;}</style></head><body><pre>'+escapeHtml(JSON.stringify(data,null,2))+'</pre></body></html>');
         w.document.close();
-      } else {
-        alert('새 창이 차단되었습니다. 콘솔에서 확인하세요.');
-        console.log(data);
-      }
+      }else{alert('새 창이 차단되었습니다.');console.log(data);}
     });
   });
 
-  // 삭제 (관리자 인증 완료 시에만 버튼 존재)
-  document.querySelectorAll('.arc-del-btn').forEach(function(btn){
+  // 삭제
+  modal.querySelectorAll('.arc-del-btn').forEach(function(btn){
     btn.addEventListener('click',async function(){
       var row=btn.closest('.archive-row');
       var key=row.getAttribute('data-key');
@@ -620,12 +661,11 @@ function renderArchiveManager(keys){
         await saveAudit('archive_deleted',{key:key,by:currentUser?currentUser.id:null});
         row.style.opacity='0.4';row.style.pointerEvents='none';
         btn.textContent='삭제됨';
-        // 모달 새로고침
         setTimeout(async function(){
-          var m=document.getElementById('archiveModal');if(m)m.remove();
+          modal.remove();
           var newKeys=await listArchives();
           if(!newKeys||newKeys.length===0){alert('모든 로그가 삭제되었습니다.');return;}
-          renderArchiveManager(newKeys);
+          await renderArchiveManager(newKeys);
         },600);
       }catch(e){
         alert('삭제 실패: '+String(e));
@@ -634,10 +674,8 @@ function renderArchiveManager(keys){
     });
   });
 }
-
 async function listArchives(){var keys=await storageList('game_archive:');return keys||[];}
 async function fetchArchive(key){var v=await storageGet(key);return safeParse(v,null);} 
-
 /* ===== scoring logic ===== */
 function computeScoreResult(votes,denom){var ids=Object.keys(votes);var breakdown=ids.map(function(id){var v=votes[id];var vals=[v.ctx,v.ctxt,v.rat,v.sim,v.det];var allAbove6=vals.every(function(x){return x>6;});var avg=vals.reduce(function(a,b){return a+b;},0)/5;var avgAbove8=avg>8;var simOk=v.sim>=7;var pass=allAbove6&&avgAbove8&&simOk;return{id:id,vals:vals,avg:avg,pass:pass};});var passCount=breakdown.filter(function(b){return b.pass;}).length;var total=denom&&denom>0?denom:ids.length;var rate=total?(passCount/total*100):0;var finalPass=rate>=60;var catAvg=CATS.map(function(c,i){if(breakdown.length===0)return 0;var sum=breakdown.reduce(function(s,b){return s+b.vals[i];},0);return sum/breakdown.length;});return{breakdown:breakdown,passCount:passCount,total:total,submitted:ids.length,rate:rate,finalPass:finalPass,catAvg:catAvg};}
 function computeConsentResult(votes,denom,preset,override){
