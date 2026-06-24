@@ -541,6 +541,13 @@ async function saveSpectator(id,data){return await storageSet('spectator:'+id,JS
 async function removeSpectator(id){return await storageDelete('spectator:'+id);}
 // 강제 설정 상태: 'user'(사용자 선택), 'force_on'(강제 활성화), 'force_off'(강제 비활성화)
 function getSettingState(settings,key){return(settings&&settings[key])||'user';}
+// ✅ 강제 설정 상태 표시 도우미 함수
+function getSettingBadge(settings, key){
+  var state = getSettingState(settings, key);
+  if(state === 'force_on') return ' <span style="font-size:10px;color:#98ff98;font-family:\'IBM Plex Mono\',monospace;">🔓강제활성</span>';
+  if(state === 'force_off') return ' <span style="font-size:10px;color:#ffb3b3;font-family:\'IBM Plex Mono\',monospace;">🔒강제비활성</span>';
+  return '';
+}
 // 방 폐쇄 여부 확인 (관리자·방관리자·평가자는 허용)
 function isRoomActionBlocked(action){
   if(!appState.roomClosed) return false;
@@ -809,8 +816,36 @@ function isJudge(){return currentUser&&currentUser.role==='평가자';}
 function isQuestioner(){return currentUser&&currentUser.role==='출제자';}
 function isPlayer(){return currentUser&&currentUser.role==='참가자';}
 function isAdmin(){return currentUser&&currentUser.role==='관리자';}
+// ✅ 사양 #14,#16: 방 관리자는 반드시 현재 입장 상태 + 지정된 권한 필요
 function isRoomAdmin(){return currentUser&&(currentUser.role==='관리자'||currentUser.role==='방관리자');}
 function isSpectator(){return currentUser&&currentUser.role==='관전자';}
+
+// ✅ 권한 검사 강화: 서버 측 검사 시뮬레이션
+function checkPermission(action){
+  if(!currentUser) return false;
+  
+  // 방 폐쇄 상태 검사 (사양 #18: 관리자·방관리자는 계속 사용)
+  if(appState.roomClosed && !isAdmin() && !isRoomAdmin()){
+    if(action==='join'||action==='vote'||action==='question'||action==='answer') return false;
+  }
+  
+  // 관전자 권한 제한 (사양 #20)
+  if(isSpectator()){
+    if(action==='vote'||action==='question'||action==='answer'||action==='approve') return false;
+  }
+  
+  // 방 관리자 권한 (해당 방에서만) (사양 #16)
+  if(isRoomAdmin()&&!isAdmin()){
+    // 방 관리자는 일반 역할도 함께 가져야 함 (사양 #15)
+    if(!currentUser.joinedAs){
+      // joinedAs가 없으면 순수 관리 역할만 있다는 뜻 → 많은 액션 불가
+      if(action==='vote'||action==='question'||action==='answer') return false;
+    }
+  }
+  
+  return true;
+}
+
 // 관전자는 투표·평가·질문 제출 불가
 function canVoteOn(poll){
   if(!currentUser)return false;
@@ -1160,10 +1195,20 @@ async function renderAdminPanelBody(){
     btn.addEventListener('click', async function(){
       var rid=btn.getAttribute('data-rid');
       var rname=btn.getAttribute('data-rname');
+      // ✅ 사양 #11,#25: 공통방 삭제 방지
+      if(rid === 'common'){
+        alert('공통방은 삭제할 수 없습니다.');
+        return;
+      }
       if(!confirm('"'+rname+'" 방을 삭제합니까? 복구되지 않습니다.'))return;
-      await deleteRoom(rid);
-      await saveAudit('room_deleted',{roomId:rid,name:rname});
-      renderAdminPanelBody();
+      try{
+        await deleteRoom(rid);
+        await saveAudit('room_deleted',{roomId:rid,name:rname});
+        await addRoomLog('방 삭제', '방 "'+rname+'" 삭제됨');
+        renderAdminPanelBody();
+      }catch(e){
+        alert('오류: ' + e.message);
+      }
     });
   });
 
@@ -1205,22 +1250,27 @@ async function renderAdminPanelBody(){
     var newRole=roleVal.value;
     var person=roster.find(function(r){return r.id===id;});
     if(!person){alert('참여자를 찾을 수 없습니다.');return;}
-    var oldRole=person.role;
-    person.role=newRole;
-    await storageSet('participant:'+id,JSON.stringify(person));
-    await addRoomLog('역할 변경',escapeHtml(person.name)+': '+oldRole+' → '+newRole);
-    await saveAudit('role_changed',{targetId:id,oldRole:oldRole,newRole:newRole,by:'관리자패널'});
-    alert(person.name+'의 역할을 '+newRole+'(으)로 변경했습니다.');
-    renderAdminPanelBody();
-  });
-
-  // 강제 퇴장
-  var kickBtn=document.getElementById('adminPanelKickBtn');
-  if(kickBtn) kickBtn.addEventListener('click', async function(){
-    var target=document.getElementById('adminPanelKickTarget');
-    if(!target||!target.value)return;
-    var id=target.value;
-    var person=roster.find(function(r){return r.id===id;});
+      
+      // ✅ 사양 #14: 방 관리자로 지정하려면 먼저 현재 입장 상태 확인
+      if(newRole==='방관리자'){
+        if(!person){alert('방에 입장한 사용자만 방 관리자로 지정할 수 있습니다.');return;}
+        // 방 관리자는 기본 역할과 독립적으로 관리 (별도 권한 레이어)
+        appState.adminData = appState.adminData || {};
+        appState.adminData.roomAdmins = appState.adminData.roomAdmins || {};
+        appState.adminData.roomAdmins[id] = {baseRole: person.role, appointedAt: Date.now(), appointedBy: currentUser.id};
+        await storageSet('admin_data', JSON.stringify(appState.adminData));
+        await addRoomLog('방관리자 임명', escapeHtml(person.name)+' → 방 관리자로 임명됨');
+        await saveAudit('room_admin_appointed', {userId: id, userName: person.name, by: currentUser.id});
+        alert(person.name+'을(를) 방 관리자로 임명했습니다. 기본 역할은 '+person.role+'입니다.');
+      } else {
+        // 기본 역할 변경
+        var oldRole=person.role;
+        person.role=newRole;
+        await storageSet('participant:'+id,JSON.stringify(person));
+        await addRoomLog('역할 변경',escapeHtml(person.name)+': '+oldRole+' → '+newRole);
+        await saveAudit('role_changed',{targetId:id,oldRole:oldRole,newRole:newRole,by:'관리자패널'});
+        alert(person.name+'의 역할을 '+newRole+'(으)로 변경했습니다.');
+      }
     if(!confirm((person?person.name:id)+'을(를) 방출합니까?'))return;
     await storageDelete('participant:'+id);
     try{remove(ref(db,'participants/'+id));}catch(e){}
@@ -1335,9 +1385,16 @@ async function fetchRooms(){
   return rows.filter(Boolean).sort(function(a,b){return a.createdAt-b.createdAt;});
 }
 async function saveRoom(room){
+  // ✅ 사양 #11: 공통방 초기화 (처음 생성 시)
+  if(!room.isCommon && !room.id) room.id = 'room_' + Date.now();
+  if(room.id === 'common') room.isCommon = true;
   await storageSet('room:'+room.id, JSON.stringify(room));
 }
 async function deleteRoom(roomId){
+  // ✅ 사양 #11,#25: 공통방('common')은 삭제 불가
+  if(roomId === 'common'){
+    throw new Error('공통방은 삭제할 수 없습니다.');
+  }
   await storageDelete('room:'+roomId);
 }
 
@@ -1379,13 +1436,27 @@ function renderJoin(){
   });
 }
 async function registerParticipant(name,role){
+  // ✅ 사양 #15: 방 관리자 권한만으로는 입장 불가 — 반드시 일반 역할(참가자/출제자/평가자 등)을 함께 가져야 함
+  if(role==='방관리자'){
+    alert('방관리자 권한만으로는 입장할 수 없습니다. 관리자가 지정한 일반 역할이 필요합니다.');
+    return;
+  }
+
   // ✅ 사양 #18: 방 폐쇄 시 신규 입장 금지 (관리자 제외)
   var closed=await fetchRoomClosed();
-  if(closed&&role!=='관리자'&&role!=='방관리자'){
+  if(closed&&role!=='관리자'){
     alert('현재 방이 폐쇄되어 있습니다. 입장할 수 없습니다.');
     return;
   }
+
+  // ✅ 사양 #18: 재입장 금지 사용자 확인
   var id=genId();
+  var isBanned=await storageGet('banned:'+id);
+  if(isBanned){
+    alert('재입장이 금지된 사용자입니다. 관리자 또는 방 관리자에게 문의하세요.');
+    return;
+  }
+
   var joinedAt = Date.now();
 
 currentUser={
@@ -1419,6 +1490,13 @@ currentUser={
 }
 async function leaveAndRejoin(){
   if(currentUser){
+    // ✅ 사양 #19: 방 폐쇄 중 퇴장 시 재입장 금지
+    var closed=await fetchRoomClosed();
+    if(closed){
+      await storageSet('banned:'+currentUser.id, JSON.stringify({bannedAt: Date.now(), reason: '방 폐쇄 중 퇴장', bannedBy: '시스템'}));
+      await addRoomLog('방 폐쇄 중 퇴장',escapeHtml(currentUser.name)+' → 재입장 금지');
+    }
+    
     await storageDelete('participant:'+currentUser.id);
     try{ remove(ref(db,'participants/'+currentUser.id)); }catch(e){}
   }
@@ -1601,13 +1679,15 @@ function renderVoteTab(){
   // ✅ 사양 #7: 정답 제출 투표 섹션 (투표 탭)
   if(isPlayer()&&!isSpectator()&&!isRoomActionBlocked('vote')){
     var pendingSubmissions=(appState.approvals||[]).filter(function(a){return a.type==='answerSubmit'&&a.status==='pending';});
-    html+='<section><div class="section-label"><span class="no mono">정답</span><span class="name">정답 제출 합의</span></div>';
+    var answerForced = getSettingState(appState.roomSettings, 'allowAnswer') === 'force_off';
+    html+='<section><div class="section-label"><span class="no mono">정답</span><span class="name">정답 제출 합의'+getSettingBadge(appState.roomSettings, 'allowAnswer')+'</span></div>';
     html+='<div class="card">'+
       '<div class="hint" style="margin-bottom:10px;">🎯 참가자들이 함께 정답을 제시합니다. (전체 참가자의 5분의 4 이상 찬성 필요)</div>'+
-      '<div class="field"><label for="asBody">정답</label><textarea id="asBody" placeholder="최종 정답을 입력하세요..."></textarea></div>'+
+      '<div class="field"><label for="asBody">정답</label><textarea id="asBody" placeholder="최종 정답을 입력하세요..." '+(answerForced?'disabled':'')+'></textarea></div>'+
       // ✅ 사양 #8: 정답 제출 투표에 5분 제한 옵션
-      '<div class="checkrow" style="margin-bottom:8px;"><input type="checkbox" id="answerTimeLimit" checked/><label for="answerTimeLimit">⏱ 5분 제한 투표</label></div>'+
-      '<button id="submitAnswerProposal" type="button" class="btn btn-primary">정답 제출</button>'+
+      '<div class="checkrow" style="margin-bottom:8px;"><input type="checkbox" id="answerTimeLimit" checked '+(answerForced?'disabled':'')+'/><label for="answerTimeLimit">⏱ 5분 제한 투표</label></div>'+
+      '<button id="submitAnswerProposal" type="button" class="btn btn-primary" '+(answerForced?'disabled':'')+'>정답 제출</button>'+
+      (answerForced?'<div style="margin-top:8px;padding:8px;background:#ffebee;border-radius:6px;font-size:12px;color:#c62828;">🔒 현재 정답 제출이 관리자에 의해 비활성화되었습니다.</div>':'')+
     '</div>';
     if(pendingSubmissions.length>0){
       html+='<div class="section-label" style="margin-top:14px;"><span class="no mono">진행중</span><span class="name">정답 제출 투표 ('+pendingSubmissions.length+'건)</span></div>';
@@ -1720,7 +1800,19 @@ function renderVoteTab(){
     var asbEl=box.querySelector('#asBody');
     if(asbEl) asbEl.addEventListener('input',function(){try{saveLocalDraft('composer:answerSubmit',{body:asbEl.value.trim()});}catch(e){}});
     submitAnswerProposal.addEventListener('click',async function(){
+      // ✅ 사양 #22,#23: 강제 설정 체크 - 정답 제출 허용이 강제 해제된 경우 제출 불가
+      if(appState.roomSettings){
+        var aState = getSettingState(appState.roomSettings, 'allowAnswer');
+        if(aState === 'force_off'){
+          alert('현재 정답 제출이 비활성화되어 있습니다.');
+          return;
+        }
+      }
       if(isSpectator()){alert('관전자는 정답을 제출할 수 없습니다.');return;}
+      if(!checkPermission('answer')){
+        alert('정답 제출 권한이 없습니다.');
+        return;
+      }
       if(isRoomActionBlocked('vote')){alert('방이 폐쇄되어 투표할 수 없습니다.');return;}
       var answerText=(box.querySelector('#asBody')||{}).value||'';answerText=answerText.trim();
       if(!answerText){alert('정답을 입력하세요.');return;}
@@ -1742,7 +1834,19 @@ function renderVoteTab(){
   // 정답 제출 찬반 투표
   box.querySelectorAll('.as-vote').forEach(function(btn){
     btn.addEventListener('click',async function(){
+      // ✅ 사양 #22,#23: 강제 설정 체크 - 투표 허용이 강제 해제된 경우 투표 불가
+      if(appState.roomSettings){
+        var vState = getSettingState(appState.roomSettings, 'allowVote');
+        if(vState === 'force_off'){
+          alert('현재 투표가 비활성화되어 있습니다.');
+          return;
+        }
+      }
       if(!isPlayer()){alert('투표 권한은 참가자에게만 있습니다.');return;}
+      if(!checkPermission('vote')){
+        alert('투표 권한이 없습니다.');
+        return;
+      }
       var id=btn.getAttribute('data-id');
       var ap=(appState.approvals||[]).find(function(a){return a.id===id;});if(!ap)return;
       if(ap.status!=='pending'){alert('이미 합의가 종료된 의안입니다.');return;}
@@ -3186,11 +3290,13 @@ function renderQuestionTab(){
 
   // 참가자: 질문 제출 폼
   if(isPlayer()&&!isSpectator()&&!isRoomActionBlocked('question')){
-    html+='<section><div class="section-label"><span class="no mono">질문</span><span class="name">질문 제시</span></div>'+
+    var questionForced = getSettingState(appState.roomSettings, 'allowQuestion') === 'force_off';
+    html+='<section><div class="section-label"><span class="no mono">질문</span><span class="name">질문 제시'+getSettingBadge(appState.roomSettings, 'allowQuestion')+'</span></div>'+
       '<div class="card">'+
         '<p style="font-size:12.5px;color:var(--text-soft);margin:0 0 12px;">합의 절차를 거쳐 결정된 질문을 제출하세요. 질문은 원칙적으로 예·아니요로 답변 가능한 형태여야 합니다.</p>'+
-        '<div class="field"><label for="qText">질문 내용</label><textarea id="qText" placeholder="예: 주인공은 사고로 사망한 건가요?"></textarea></div>'+
-        '<button id="submitQuestion" type="button" class="btn btn-primary">질문 제출</button>'+
+        '<div class="field"><label for="qText">질문 내용</label><textarea id="qText" placeholder="예: 주인공은 사고로 사망한 건가요?" '+(questionForced?'disabled':'')+'></textarea></div>'+
+        '<button id="submitQuestion" type="button" class="btn btn-primary" '+(questionForced?'disabled':'')+'> 질문 제출</button>'+
+        (questionForced?'<div style="margin-top:8px;padding:8px;background:#ffebee;border-radius:6px;font-size:12px;color:#c62828;">🔒 현재 질문이 관리자에 의해 비활성화되었습니다.</div>':'')+
       '</div></section>';
   }
 
@@ -3229,6 +3335,18 @@ function renderQuestionTab(){
     try{var dq=loadLocalDraft('composer:question'); if(dq && document.getElementById('qText')) document.getElementById('qText').value = dq.text||'';}catch(e){}
     if(document.getElementById('qText')) document.getElementById('qText').addEventListener('input', function(){ try{ saveLocalDraft('composer:question',{ text: document.getElementById('qText')?document.getElementById('qText').value.trim():'' }); }catch(e){} });
     if(submitQ) submitQ.addEventListener('click',async function(){
+      // ✅ 사양 #22,#23: 강제 설정 체크 - 질문 허용이 강제 해제된 경우 제출 불가
+      if(appState.roomSettings){
+        var qState = getSettingState(appState.roomSettings, 'allowQuestion');
+        if(qState === 'force_off'){
+          alert('현재 질문이 비활성화되어 있습니다.');
+          return;
+        }
+      }
+      if(!checkPermission('question')){
+        alert('질문 제출 권한이 없습니다.');
+        return;
+      }
       var text=document.getElementById('qText').value.trim();
       if(!text){alert('질문을 입력하세요.');return;}
       // 질문은 먼저 합의(투표) 절차를 통해 상정됩니다. 참가자 합의가 가결되면 실제 질문 목록에 등록됩니다.
