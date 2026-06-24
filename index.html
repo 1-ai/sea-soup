@@ -817,16 +817,29 @@ function isQuestioner(){return currentUser&&currentUser.role==='출제자';}
 function isPlayer(){return currentUser&&currentUser.role==='참가자';}
 function isAdmin(){return currentUser&&currentUser.role==='관리자';}
 // ✅ 사양 #14,#16: 방 관리자는 반드시 현재 입장 상태 + 지정된 권한 필요
+// ✅ Issue #37: 방 관리자 메뉴 임명 후에만 표시
 function isRoomAdmin(){return currentUser&&(currentUser.role==='관리자'||currentUser.role==='방관리자');}
+// 관리 탭 표시 여부 검사 (방 관리자로 정식 임명된 경우만)
+function canAccessAdminTab(){
+  return currentUser && (currentUser.role==='관리자' || currentUser.role==='방관리자');
+}
 function isSpectator(){return currentUser&&currentUser.role==='관전자';}
 
 // ✅ 권한 검사 강화: 서버 측 검사 시뮬레이션
+// ✅ Issue #36: 강제 설정 서버 검증 추가
 function checkPermission(action){
   if(!currentUser) return false;
   
   // 방 폐쇄 상태 검사 (사양 #18: 관리자·방관리자는 계속 사용)
   if(appState.roomClosed && !isAdmin() && !isRoomAdmin()){
     if(action==='join'||action==='vote'||action==='question'||action==='answer') return false;
+  }
+  
+  // ✅ 강제 설정 검증 - 사용자는 우회 불가
+  if(appState.roomSettings){
+    if(action==='vote' && getSettingState(appState.roomSettings, 'allowVote') === 'force_off') return false;
+    if(action==='question' && getSettingState(appState.roomSettings, 'allowQuestion') === 'force_off') return false;
+    if(action==='answer' && getSettingState(appState.roomSettings, 'allowAnswer') === 'force_off') return false;
   }
   
   // 관전자 권한 제한 (사양 #20)
@@ -1174,23 +1187,30 @@ async function renderAdminPanelBody(){
     refreshAll(true);
   });
 
-  // 방 생성
+  // ✅ Issue #33: 방 생성 - 입장 가능 상태 보장
   var createRoomBtn=document.getElementById('createRoomBtn');
   if(createRoomBtn) createRoomBtn.addEventListener('click', async function(){
     var name=(document.getElementById('newRoomName').value||'').trim();
     if(!name){alert('방 이름을 입력하세요.');return;}
     var code=(document.getElementById('newRoomCode').value||'').trim().toUpperCase();
     var desc=(document.getElementById('newRoomDesc').value||'').trim();
-    var room={id:genId(),name:name,code:code||null,desc:desc||null,createdAt:Date.now(),createdBy:'관리자'};
+    var roomId='room_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
+    var room={id:roomId,name:name,code:code||null,desc:desc||null,createdAt:Date.now(),createdBy:'관리자',isOpen:true,initialized:true};
+    // 방 저장
     await saveRoom(room);
+    // 방 설정 초기화
+    await storageSet('room_settings_'+roomId, JSON.stringify({allowQuestion:'user',allowVote:'user',allowAnswer:'user',allowChat:'user'}));
+    // 방 폐쇄 상태 초기화
+    await storageSet('room_closed_'+roomId, 'false');
     await saveAudit('room_created',{roomId:room.id,name:room.name,code:room.code});
     document.getElementById('newRoomName').value='';
     document.getElementById('newRoomCode').value='';
     document.getElementById('newRoomDesc').value='';
+    alert('방 "'+name+'"이 생성되었습니다. 이제 입장할 수 있습니다.');
     renderAdminPanelBody();
   });
 
-  // 방 삭제
+  // ✅ Issue #34: 방 삭제 - 모든 폴/질문/정답 즉시 중지
   body.querySelectorAll('.admin-delete-room').forEach(function(btn){
     btn.addEventListener('click', async function(){
       var rid=btn.getAttribute('data-rid');
@@ -1202,9 +1222,36 @@ async function renderAdminPanelBody(){
       }
       if(!confirm('"'+rname+'" 방을 삭제합니까? 복구되지 않습니다.'))return;
       try{
+        // 방 폐쇄 상태 설정 (모든 활동 중지)
+        await storageSet('room_closed_'+rid, 'true');
+        // 모든 폴 비활성화
+        var polls = (appState.polls || []).filter(function(p){return true;});
+        polls.forEach(async function(p){
+          p.status = 'terminated';
+          p.terminatedAt = Date.now();
+          p.terminatedReason = '방 삭제로 인한 자동 중지';
+          try{ await storageSet('poll:'+p.id, JSON.stringify(p)); }catch(e){}
+        });
+        // 모든 질문 비활성화
+        var questions = (appState.questions || []).filter(function(q){return true;});
+        questions.forEach(async function(q){
+          if(q.status !== 'answered') q.status = 'rejected';
+          q.rejectedReason = '방 삭제로 인한 자동 거절';
+          try{ await storageSet('question:'+q.id, JSON.stringify(q)); }catch(e){}
+        });
+        // 모든 승인 의안 비활성화
+        var approvals = (appState.approvals || []).filter(function(a){return true;});
+        approvals.forEach(async function(a){
+          if(a.status === 'pending'){
+            a.status = 'cancelled';
+            a.cancelledReason = '방 삭제로 인한 자동 취소';
+            a.cancelledAt = Date.now();
+            try{ await storageSet('approval:'+a.id, JSON.stringify(a)); }catch(e){}
+          }
+        });
         await deleteRoom(rid);
-        await saveAudit('room_deleted',{roomId:rid,name:rname});
-        await addRoomLog('방 삭제', '방 "'+rname+'" 삭제됨');
+        await saveAudit('room_deleted',{roomId:rid,name:rname,status:'terminated_all_activities'});
+        await addRoomLog('방 삭제', '방 "'+rname+'" 삭제됨 - 모든 활동 중지');
         renderAdminPanelBody();
       }catch(e){
         alert('오류: ' + e.message);
@@ -1266,6 +1313,7 @@ async function renderAdminPanelBody(){
         // 기본 역할 변경
         var oldRole=person.role;
         person.role=newRole;
+        person.updatedAt=Date.now(); // ✅ Issue #38: 타임스탐프 추가
         await storageSet('participant:'+id,JSON.stringify(person));
         await addRoomLog('역할 변경',escapeHtml(person.name)+': '+oldRole+' → '+newRole);
         await saveAudit('role_changed',{targetId:id,oldRole:oldRole,newRole:newRole,by:'관리자패널'});
@@ -1296,7 +1344,7 @@ async function renderAdminPanelBody(){
     renderAdminPanelBody();
   });
 
-  // 이름 변경
+  // ✅ Issue #32: 이름 변경 동기화 강화
   var renameBtn=document.getElementById('adminPanelRenameBtn');
   if(renameBtn) renameBtn.addEventListener('click', async function(){
     var target=document.getElementById('adminPanelRenameTarget');
@@ -1308,12 +1356,21 @@ async function renderAdminPanelBody(){
     var person=roster.find(function(r){return r.id===id;});
     if(!person)return;
     var oldName=person.name;
+    // 타임스탠프 추가하여 롤백 방지
     person.name=newName;
+    person.nameChangedAt=Date.now();
+    person.nameChangedBy=currentUser?currentUser.id:null;
     await storageSet('participant:'+id,JSON.stringify(person));
+    // currentUser인 경우 즉시 동기화
+    if(currentUser&&currentUser.id===id){
+      currentUser.name=newName;
+      try{ sessionStorage.setItem('currentUser',JSON.stringify(currentUser)); }catch(e){}
+    }
     await addRoomLog('이름 변경',oldName+' → '+newName);
     await saveAudit('name_changed',{targetId:id,oldName:oldName,newName:newName,by:'관리자패널'});
     alert('이름을 변경했습니다.');
-    renderAdminPanelBody();
+    // 전체 UI 새로고침 (다른 사용자도 동기화)
+    await refreshAll(true);
   });
 
   // 참여자 초기화
@@ -1467,21 +1524,26 @@ currentUser={
 };
   // sessionStorage에 저장 → 같은 탭 새로고침 시 세션 유지, 탭/창 닫으면 자동 소멸
   try{ sessionStorage.setItem('currentUser', JSON.stringify(currentUser)); }catch(e){}
+  // ✅ Issue #38: updatedAt 타임스탐프 추가
   await storageSet(
   'participant:'+id,
   JSON.stringify({
+    id:id,
     name:name,
     role:role,
     joinedAt:joinedAt,
+    updatedAt:Date.now(),
     lastSeen:Date.now()
   })
 );
   await set(
   ref(db,'participants/'+id),
   {
+    id:id,
     name:name,
     role:role,
-    joinedAt:Date.now()
+    joinedAt:Date.now(),
+    updatedAt:Date.now()
   }
 );
   try{await saveAudit('participant_joined',{participantId:id,name:name,role:role});}catch(e){}
@@ -2819,6 +2881,11 @@ if(!compact){
     }
   }
 
+  // ✅ Issue #39: 평가장 반대 의견 표시 (출제자에게만)
+  if(a.chiefObjectionReason && (isQuestioner() || isJudge() || isChief())){
+    html+='<div class="a-objection" style="margin-top:10px;background:rgba(218, 165, 32, 0.1);border:1px solid rgba(218, 165, 32, 0.3);">⚖ 평가장 반대 의견: '+escapeHtml(a.chiefObjectionReason)+'</div>';
+  }
+  
   // 거부 사유 — 참가자에게는 비공개 (출제자·평가자만 열람)
   if(a.rejectReason && !isPlayer()){
     html+='<div class="a-reason" style="margin-top:8px;margin-bottom:4px;">⛔ <strong>거부 사유:</strong> '+escapeHtml(a.rejectReason)+'</div>';
@@ -3819,7 +3886,7 @@ function renderAdminTab(){
     await refreshAll(true);
   });
 
-  // 강제 퇴장
+  // ✅ Issue #35: 강제 퇴장 - 즉시 처리 및 권한 박탈
   var kickBtn=box.querySelector('#adminKickBtn');
   if(kickBtn) kickBtn.addEventListener('click',async function(){
     var target=box.querySelector('#adminKickTarget');
@@ -3827,10 +3894,20 @@ function renderAdminTab(){
     var id=target.value;
     var person=appState.roster.find(function(r){return r.id===id;});
     if(!confirm((person?person.name:id)+'을(를) 방출합니까?'))return;
+    // 즉시 저장소에서 제거
     await storageDelete('participant:'+id);
     try{remove(ref(db,'participants/'+id));}catch(e){}
+    // currentUser인 경우 즉시 로그아웃
+    if(currentUser&&currentUser.id===id){
+      currentUser=null;
+      try{ sessionStorage.removeItem('currentUser'); }catch(e){}
+      renderJoin();
+      alert('방출되었습니다.');
+      return;
+    }
     await addRoomLog('강제 퇴장',escapeHtml(person?person.name:id)+' 방출됨');
     await saveAudit('participant_kicked',{targetId:id,targetName:person?person.name:'?',by:currentUser?currentUser.id:null});
+    // 전체 새로고침으로 모든 클라이언트에서 사용자 제거
     await refreshAll(true);
   });
   var banBtn=box.querySelector('#adminBanBtn');
@@ -3861,6 +3938,7 @@ function renderAdminTab(){
     if(!person){alert('참여자를 찾을 수 없습니다.');return;}
     var oldName=person.name;
     person.name=newName;
+    person.updatedAt=Date.now(); // ✅ Issue #38: 타임스탐프 추가
     await storageSet('participant:'+id,JSON.stringify(person));
     // 이름 변경 이력 저장
     var histKey='name_history:'+id+':'+genId();
@@ -3925,6 +4003,20 @@ async function refreshAll(force){
   });
 
   var roster=await fetchRoster();
+  // ✅ Issue #38: 롤백 방지 - 타임스탠프 기반 최신 데이터 우선
+  if(appState.roster && Array.isArray(roster)){
+    roster = roster.map(function(newPerson){
+      var oldPerson = appState.roster.find(function(p){return p.id === newPerson.id;});
+      if(oldPerson && oldPerson.updatedAt && newPerson.updatedAt){
+        // 오래된 데이터를 새 데이터로 대체하지 않음 (최신 타임스탤프 우선)
+        if(newPerson.updatedAt < oldPerson.updatedAt){
+          return oldPerson; // 이전 버전이 더 최신이면 유지
+        }
+      }
+      return newPerson;
+    });
+  }
+  
   var polls=await fetchPolls();
   // 자동 만료 처리: 열린 투표 중 expiresAt이 지난 것은 마감
   var expired = polls.filter(function(p){return p.status==='open' && p.expiresAt && p.expiresAt<=Date.now();});
