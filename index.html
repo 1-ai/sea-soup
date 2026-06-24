@@ -1319,13 +1319,32 @@ async function renderAdminPanelBody(){
         await saveAudit('role_changed',{targetId:id,oldRole:oldRole,newRole:newRole,by:'관리자패널'});
         alert(person.name+'의 역할을 '+newRole+'(으)로 변경했습니다.');
       }
+    });
+  });
+
+  // ✅ Issue #35: 강제 퇴장 버튼
+  var kickBtn=document.getElementById('adminPanelKickBtn');
+  if(kickBtn) kickBtn.addEventListener('click', async function(){
+    var target=document.getElementById('adminPanelKickTarget');
+    if(!target||!target.value)return;
+    var id=target.value;
+    var person=roster.find(function(r){return r.id===id;});
     if(!confirm((person?person.name:id)+'을(를) 방출합니까?'))return;
+    // 즉시 저장소에서 제거
     await storageDelete('participant:'+id);
     try{remove(ref(db,'participants/'+id));}catch(e){}
+    // currentUser인 경우 즉시 로그아웃
+    if(currentUser&&currentUser.id===id){
+      currentUser=null;
+      try{ sessionStorage.removeItem('currentUser'); }catch(e){}
+      renderJoin();
+      alert('방출되었습니다.');
+      return;
+    }
     await addRoomLog('강제 퇴장',escapeHtml(person?person.name:id)+' 방출됨');
-    await saveAudit('participant_kicked',{targetId:id,targetName:person?person.name:'?',by:'관리자패널'});
-    alert('방출 완료.');
-    renderAdminPanelBody();
+    await saveAudit('participant_kicked',{targetId:id,targetName:person?person.name:'?',by:currentUser?currentUser.id:null});
+    // 전체 새로고침으로 모든 클라이언트에서 사용자 제거
+    await refreshAll(true);
   });
 
   var banBtn=document.getElementById('adminPanelBanBtn');
@@ -1358,6 +1377,7 @@ async function renderAdminPanelBody(){
     var oldName=person.name;
     // 타임스탠프 추가하여 롤백 방지
     person.name=newName;
+    person.updatedAt=Date.now(); // ✅ Issue #38: 타임스탐프 추가
     person.nameChangedAt=Date.now();
     person.nameChangedBy=currentUser?currentUser.id:null;
     await storageSet('participant:'+id,JSON.stringify(person));
@@ -1515,13 +1535,12 @@ async function registerParticipant(name,role){
   }
 
   var joinedAt = Date.now();
-
-currentUser={
-  id:id,
-  name:name,
-  role:role,
-  joinedAt:joinedAt
-};
+  currentUser={
+    id:id,
+    name:name,
+    role:role,
+    joinedAt:joinedAt
+  };
   // sessionStorage에 저장 → 같은 탭 새로고침 시 세션 유지, 탭/창 닫으면 자동 소멸
   try{ sessionStorage.setItem('currentUser', JSON.stringify(currentUser)); }catch(e){}
   // ✅ Issue #38: updatedAt 타임스탐프 추가
@@ -3938,7 +3957,7 @@ function renderAdminTab(){
     if(!person){alert('참여자를 찾을 수 없습니다.');return;}
     var oldName=person.name;
     person.name=newName;
-    person.updatedAt=Date.now(); // ✅ Issue #38: 타임스탐프 추가
+    person.updatedAt=Date.now(); // ✅ Issue #38: 타임스탤프 추가
     await storageSet('participant:'+id,JSON.stringify(person));
     // 이름 변경 이력 저장
     var histKey='name_history:'+id+':'+genId();
